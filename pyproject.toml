@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "utils_n2oblife"
+version = "0.0.1"
+authors = [
+  { name="n2oblife", email="zackanit@gmail.com" },
+]
+description = "Useful functions to use in my projects"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/n2oblife/utils_n2oblife"
+"Bug Tracker" = "https://github.com/n2oblife/utils_n2oblife/issues"
