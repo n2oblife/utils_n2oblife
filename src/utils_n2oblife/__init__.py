@@ -1,2 +1,2 @@
 __version__='0.0.1'
-from Machine_Learning import Device
+from . import Machine_Learning

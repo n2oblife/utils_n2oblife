@@ -73,3 +73,10 @@ If you find these utilities helpful in your projects, consider giving credit and
 If you have any questions, suggestions, or inquiries, please contact us at zackanit@gmail.com
 
 Happy coding!
+
+## Note for myself
+
+To build the package launch :
+   ```
+   python -m build
+   ```
