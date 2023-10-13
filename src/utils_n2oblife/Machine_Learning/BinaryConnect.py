@@ -14,7 +14,7 @@ class BC():
         # count the number of Conv2d and Linear
         # This will be used next in order to build a list of all 
         # parameters of the model 
-
+        
         count_targets = 0
         for m in model.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):

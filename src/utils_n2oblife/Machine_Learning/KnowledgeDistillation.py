@@ -1,3 +1,5 @@
+#from the github : https://github.com/JoonyoungYi/KD-pytorch
+# still need to be more generic
 import os
 import argparse
 

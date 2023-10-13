@@ -1,4 +1,7 @@
+import os
 import torch
+import numpy as np
+from numpy import random
 
 class Device():
     def __init__(self) -> None:
@@ -33,16 +36,10 @@ class Device_CEA(Device):
     def __init__(self) -> None:
         """
         Class used in the lima project : https://github.com/aymara/lima.git
-        Almost a config which changes depending on the device used (either FactoryAI or the CEA PC)
+        Almost a config which changes depending on the device used
         """
         super().__init__()
-        if torch.cuda.is_available():
-            # FactotyAI
-            base_dir = '/home/users/zkanit/'
-        else :
-            # PC
-            base_dir = '/home/zk274707/Projet/proto/'
-        
+        base_dir = '/home/users/zkanit/'
         self._base_dir = base_dir
         self._save_dir = base_dir+''
         self._data = base_dir+''

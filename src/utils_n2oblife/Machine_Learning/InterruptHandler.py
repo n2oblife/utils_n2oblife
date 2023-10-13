@@ -1,6 +1,7 @@
 import torch
 import sys
 
+# not really an error handler, will be updated later
 def keybInterrupt(model, model_name, optimizer,
                   num_epochs, training, dataset,
                   model_dir, 

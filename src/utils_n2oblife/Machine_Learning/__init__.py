@@ -1,2 +1,2 @@
-from . import Device, BinaryConnect, EarlyStopper, GaussianNoise, InterruptHandler, Mixup, DataLoader
+from . import Device, BinaryConnect, EarlyStopper, GaussianNoise, InterruptHandler, Mixup, DataLoaderPerso
 #knowledgedistillation

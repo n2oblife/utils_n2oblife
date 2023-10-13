@@ -1,3 +1,5 @@
+# Mixup training from IMT Atlantique courses on Deep Learning Optimization
+
 import torch
 import numpy as np
 

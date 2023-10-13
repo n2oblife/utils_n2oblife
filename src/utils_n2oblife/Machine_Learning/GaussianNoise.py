@@ -2,7 +2,7 @@ import torch
 import torchvision.transforms as transforms
 
 
-# Transformation to add gaussian noise
+# Transformation to add gaussian noise in images
 class AddGaussianNoise(object):
     def __init__(self, mean=0., std=1.):
         self.std = std
