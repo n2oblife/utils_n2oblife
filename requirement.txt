@@ -1,8 +1,6 @@
 torch
 torchvision
-numpy
 opencv-python
-models
-utils
-datasets
 matplotlib
+datasets
+dataset
