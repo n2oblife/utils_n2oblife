@@ -4,4 +4,4 @@ numpy
 opencv-python
 models
 utils
-dataset
+datasets
