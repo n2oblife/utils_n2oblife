@@ -1,1 +1,1 @@
-from . import ErrorCatcher
+from . import ErrorCatcher, InterruptHandler
