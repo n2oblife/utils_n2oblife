@@ -21,7 +21,7 @@ class MaskFiller(ImageDataset):
         path (str): Path to the dataset folder.
         mask_pixel(tuple[int,int,int]): The mask pixel value (white)
     """
-    def __init__(self, path: str = None, mask_pixel=(255,255,255)) -> None:
+    def __init__(self, path:str = None, mask_pixel=(255,255,255)) -> None:
         super().__init__(path)
         # self.path = path
         # self.all_images = []
@@ -58,3 +58,22 @@ class MaskFiller(ImageDataset):
         """
         NotImplemented
         #TODO
+    
+    def fill_from_line(self, edges_list:list, filling_function:function=boundary_fill):
+        n_elt = len(edges_list)
+        for i in range(0, n_elt, 2):
+            edge = edges_list[i]
+            self.filling_function(x=edge[0]+1, y=edge[1])
+
+    def fill_dataset(self):
+        edges_coordinates = []
+        for img in self.loop_all_images():
+            for pix,x,y in img.loop_pixels():
+                if x==0:
+                    # reset the edges on each line
+                    edges_coordinates = []
+                if img.is_border(x,y):
+                    edges_coordinates.append((x,y))
+                if x==img.dim_x-1:
+                    if len(edges_coordinates) % 2 == 0:
+                        self.fill_from_line(edges_coordinates)

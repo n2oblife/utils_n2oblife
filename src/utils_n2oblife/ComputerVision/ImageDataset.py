@@ -65,6 +65,21 @@ class CurrentImage:
         """
         return self.get_pixel(x,y) == pixel
     
+    def is_border(self, x:int, y:int)->bool:
+        """Checks if a given pixel is a border or not by looking at the surrounding ones on the same row.
+
+        Args:
+            x (int): Position on x axis from 0 to (dim_x-1)
+            y (int): Position on y axis from 0 to (dim_y-1)
+
+        Returns:
+            bool: _description_
+        """
+        return (self.is_pix_mask(x,y) 
+                and not(self.is_pix_mask(x-1,y)) 
+                and not(self.is_pix_mask(x+1,y)))
+
+
     def fill_pixel(self, x:int, y:int, new_pix:tuple[int])->None:
         self.image.load()[y,x] = new_pix
     

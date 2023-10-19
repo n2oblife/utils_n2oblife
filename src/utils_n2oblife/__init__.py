@@ -1,2 +1,2 @@
 __version__='0.0.2'
-from . import Machine_Learning, ErrorHandling, ComputerVision
+from . import Machine_Learning, InterractionHandling, ComputerVision
