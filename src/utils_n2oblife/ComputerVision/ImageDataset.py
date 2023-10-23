@@ -1,5 +1,6 @@
 import os
 from PIL import Image
+import numpy as np
 
 class CurrentImage:
     def __init__(self, id=0, path:str=None) -> None:
@@ -9,13 +10,13 @@ class CurrentImage:
             path (str): path of the dataset.
             id (int, optional): current image's id in the dataset. Defaults to 0.
         """
+        self.path:str = path
+        self.image:Image
+        self.format:str = None
+        self.id:int
+        self.dim_x:int
+        self.dim_y:int
         self.load_image(id=id, path=path)
-        # self.path:str = path
-        # self.image:Image
-        # self.format:str = None
-        # self.id:int
-        # self.dim_x:int
-        # self.dim_y:int
     
 
     def load_image(self, id:int, path:str=None)->None:
@@ -29,10 +30,14 @@ class CurrentImage:
             self.path = path
         elif not(self.path) :
             raise ValueError("The path needs to be instanciated")
+        print(self.path)
         self.image = Image.open(self.path)
         self.id = id
         self.dim_x, self.dim_y = self.image.size
         self.format = self.image.format
+        self.current_border = [None]*self.dim_y
+        self.borders = []
+        self.horizontal_borders:bool = None
         #map = self.image.load() to get the map of pixels
 
     def get_pixel(self, x:int, y:int)->tuple[int,int,int]:
@@ -46,8 +51,8 @@ class CurrentImage:
             tuple[int,int,int]: Tuple of RGB value from 0 to 255
         """
         assert(0<=x<self.dim_x and 0<=y<self.dim_y), ValueError(
-            f"The pixel need to be in this {self.dim_x}x{self.dim_y} image with positive values")
-        return self.image.load()[y,x]
+            f"The pixel need to be in this {self.dim_x}x{self.dim_y} image with positive values, but your values are ({x},{y})")
+        return self.image.load()[x,y]
 
     def plot_image(self):
         self.image.show()
@@ -64,24 +69,86 @@ class CurrentImage:
             value (tuple, optional): Pixel value. Defaults to (255,255,255)=(white).
         """
         return self.get_pixel(x,y) == pixel
-    
-    def is_border(self, x:int, y:int)->bool:
-        """Checks if a given pixel is a border or not by looking at the surrounding ones on the same row.
+                
+    def define_border(self, x:int, y:int)->None:
+        """Recursive function which looks around a pixel to add it to the current border research list.
+        We assume there is only one pixel around a given mask pixel which is a border.
 
         Args:
             x (int): Position on x axis from 0 to (dim_x-1)
             y (int): Position on y axis from 0 to (dim_y-1)
 
         Returns:
-            bool: _description_
+            tuple[int, int]: Position of the border pixel
         """
-        return (self.is_pix_mask(x,y) 
-                and not(self.is_pix_mask(x-1,y)) 
-                and not(self.is_pix_mask(x+1,y)))
+        assert(self.is_pix_mask(x,y)), IndexError(
+            "The pixel from which we should define a border need to be a masked pixel")
+        if not (x,y) in self.current_border :
+            if 0==x or x==self.dim_x-1 or 0==y or y==self.dim_y-1:
+                self.current_border[y] = x
+                return None
+            for val_y in (0, 1):
+                for val_x in (-1, 0, 1):
+                    if not (val_x==0 and val_y==0):
+                        if self.is_pix_mask(x+val_x, y+val_y) :
+                            self.define_border(x+val_x, y+val_y)
+                            self.current_border[y+val_y] = x+val_x
+                            return None
+
+    def define_angle(self, reroll = 2):
+        min_set, max_set = 0, 0
+        for num, elt in enumerate(self.current_border):
+            while not elt and min_set==max_set:
+                min_set, max_set = num, num
+            if elt :
+                max_set = num
+        #we assume that the segmentation border are continuous
+        for _ in range(reroll):
+            rand_int = np.random.randint(min_set, max_set+1)
+
+            self.horizontal_borders = True
+
+    def trace_border(self):
+        for _, x, y in self.loop_pixels():
+            if self.is_pix_mask(x,y):
+                self.define_border(x,y)
+                self.define_angle()
+
+    
+    def check_border(self, x:int, y:int)->bool:
+        """Check if the (x,y) pixel is eligible as a border
+
+        Args:
+            x (int): Position on x axis from 0 to (dim_x-1)
+            y (int): Position on y axis from 0 to (dim_y-1)
+        """
+        # tmp = x 
+        # while self.is_pix_mask(tmp,y):
+        #     tmp-=1
+        #     if tmp == 0:
+        #         return True
+        return True
+
+    def is_border(self, x:int, y:int)->bool:
+        """Checks if a given pixel is a border or not by looking at the surrounding ones on the same row.
+
+        Args:
+            x (int): Position on x axis from 0 to (dim_x-1)
+            y (int): Position on y axis from 0 to (dim_y-1)
+        """
+        if 0<x<self.dim_x-1 and 0<y<self.dim_y:
+            return (self.check_border(x,y) 
+                    and (
+                        (self.is_pix_mask(x,y) and not self.is_pix_mask(x+1,y))
+                        or (not self.is_pix_mask(x,y) 
+                            and self.is_pix_mask(x+1,y) 
+                            and not self.is_pix_mask(x+2,y))
+                        )
+                    )
 
 
     def fill_pixel(self, x:int, y:int, new_pix:tuple[int])->None:
-        self.image.load()[y,x] = new_pix
+        self.image.load()[x,y] = new_pix
     
     def loop_pixels(self):
         """Itertate pixels through an image.
@@ -91,7 +158,8 @@ class CurrentImage:
         """
         for y in range(self.dim_y):
             for x in range(self.dim_x):
-                yield self.image.load()[y,x], x,y    
+                #print(f'This are the values of x:{self.dim_x} and y:{self.dim_y}')
+                yield self.image.load()[x,y], x,y    
 
     
 class ImageDataset:
@@ -101,10 +169,10 @@ class ImageDataset:
         Args:
             path (str): Path to the dataset folder.
         """
+        self.path = path
+        self.all_images = []
+        self.current_image = None
         self.load_dataset(path=path)
-        # self.path = path
-        # self.all_images = []
-        # self.current_image = CurrentImage()
     
     def load_dataset(self, path:str=None)->None:
         """A function to initiate the dataset and change it afterward
@@ -117,6 +185,9 @@ class ImageDataset:
             self.path = path
         if self.path:
             self.all_images = os.listdir(self.path)
+            if not self.current_image:
+                self.current_image = CurrentImage(
+                    path=self.path+'/'+self.all_images[0])
             self.load_current_image(id=0)
         else :
             raise ValueError("The path to the dataset must be instanciated")
@@ -129,7 +200,10 @@ class ImageDataset:
         self.current_image.plot_image()
 
     def save_current_image(self, save_file='.')->None:
-        self.current_image.image.save(save_file)
+        file_name = self.all_images[self.current_image.id]        
+        print("save file :",save_file)
+        print("file name :",file_name)
+        self.current_image.image.save(save_file+'/'+file_name)
     
     def save_dataset(self, save_file='.')->None:
         for img in self.loop_all_images():
@@ -139,9 +213,11 @@ class ImageDataset:
         """Itertaes over all the images of the current dataset.
 
         Yields:
+            int: id of the current image
             CurrentImage: Custom class of image
         """
-        for id,_ in enumerate(self.all_images):
+        n_images = len(self.all_images)
+        for id in range(n_images):
             self.load_current_image(id=id)
             yield self.current_image
         

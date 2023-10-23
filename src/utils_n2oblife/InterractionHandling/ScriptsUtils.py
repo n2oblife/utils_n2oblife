@@ -1,23 +1,29 @@
 import os, sys, warnings, logging
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
+# def restart_line():
+#     sys.stdout.write('\r')
+#     sys.stdout.flush()
+
 def set_logging_info(mode='default')->None:
     if mode=='default':
         logging.basicConfig(level=logging.INFO,format='%(levelname)s - %(message)s')
         warnings.simplefilter("ignore")
 
 class ParserOptions:
-    def __init__(self, long:str, short:str, default:str = None, help:str=None) -> None:
+    def __init__(self, long:str, short:str, choice:list[str]=None, default:str = None, help:str=None) -> None:
         """A custom class to help manage the parsing of input for python script and use them as arguments.
         
         Args:
             long (str): A letter or two for arg.
             short (str,optional): The actual name of the arg. Defaults to None.
+            choice (list[any], optional): A list of choices the args that can be used. Default to None.
             default (str, optional): A default arg to give. Defaults to None.
             help (str, optional): Help to better understand the use of the arg. Defaults to ''.
         """
         self.short = short
         self.long = long
+        self.choice = choice
         self.default = default
         self.help = help
 
@@ -39,7 +45,7 @@ def parse_input(parser_config:ParserOptions|list[ParserOptions]=None, mode='defa
                     '--'+parser_config.long, 
                     default=parser_config.default,
                     help=parser_config.help)
-        elif type(parser_config) == list[ParserOptions]:
+        elif type(parser_config) == list:
             for parse_arg in parser_config:
                 parser.add_argument('-'+parse_arg.short, 
                                     '--'+parse_arg.long, 

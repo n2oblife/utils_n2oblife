@@ -9,9 +9,10 @@ def main():
     args = parse_input(parser_config=cfg)
     dataset_path = args['dataset']
     save_file = args['output']
-    filler = MaskFiller(path=dataset_path)
+    filler = MaskFiller(path=dataset_path,
+                        save_file=save_file)
     filler.fill_dataset()
-    filler.save_dataset(save_file)
+    # filler.save_dataset(save_file)
 
 if __name__=="__main__":
     main()
