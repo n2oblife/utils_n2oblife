@@ -1,6 +1,7 @@
 import os
-from PIL import Image
+from PIL import Image, ImageDraw
 import numpy as np
+
 
 class CurrentImage:
     def __init__(self, id=0, path:str=None) -> None:
@@ -16,6 +17,8 @@ class CurrentImage:
         self.id:int
         self.dim_x:int
         self.dim_y:int
+        self.current_border = []
+        self.horizontal_borders:bool = None
         self.load_image(id=id, path=path)
     
 
@@ -35,8 +38,7 @@ class CurrentImage:
         self.id = id
         self.dim_x, self.dim_y = self.image.size
         self.format = self.image.format
-        self.current_border = [None]*self.dim_y
-        self.borders = []
+        self.current_border = []
         self.horizontal_borders:bool = None
         #map = self.image.load() to get the map of pixels
 
@@ -77,42 +79,63 @@ class CurrentImage:
         Args:
             x (int): Position on x axis from 0 to (dim_x-1)
             y (int): Position on y axis from 0 to (dim_y-1)
-
-        Returns:
-            tuple[int, int]: Position of the border pixel
         """
         assert(self.is_pix_mask(x,y)), IndexError(
-            "The pixel from which we should define a border need to be a masked pixel")
+            f"The pixel from which we should define a border need to be a masked pixel : ({x}, {y})")
         if not (x,y) in self.current_border :
-            if 0==x or x==self.dim_x-1 or 0==y or y==self.dim_y-1:
-                self.current_border[y] = x
-                return None
-            for val_y in (0, 1):
+            self.current_border.append((x, y))
+            self.fill_pixel(x,y,(255,0,0))
+            for val_y in (-1, 0, 1):
                 for val_x in (-1, 0, 1):
                     if not (val_x==0 and val_y==0):
-                        if self.is_pix_mask(x+val_x, y+val_y) :
-                            self.define_border(x+val_x, y+val_y)
-                            self.current_border[y+val_y] = x+val_x
-                            return None
+                        if 0<=x+val_x<self.dim_x and 0<=y+val_y<self.dim_y:
+                            if self.is_pix_mask(x+val_x, y+val_y) :
+                                self.define_border(x+val_x, y+val_y)
+                                # return None
+            # else: 
+            #     self.current_border.append((x,y))
+            #     return None
+                            
 
-    def define_angle(self, reroll = 2):
-        min_set, max_set = 0, 0
-        for num, elt in enumerate(self.current_border):
-            while not elt and min_set==max_set:
-                min_set, max_set = num, num
-            if elt :
-                max_set = num
-        #we assume that the segmentation border are continuous
-        for _ in range(reroll):
-            rand_int = np.random.randint(min_set, max_set+1)
+    def draw_mask(self, polygon:list = None, color:tuple=(255,255,255)):
+        """Draws a mask based on the current border computed or a list of edges of a polygon.
 
-            self.horizontal_borders = True
+        Args:
+            polygon (list, optional): The very polygon. Defaults to None.
+            color (tuple, optional): Color to fill with the polygon. Defaults to (255,255,255).
+        """
+        if polygon :
+            ImageDraw.Draw(self.image).polygon(
+                polygon, outline=color, fill=color)
+        else:
+            ImageDraw.Draw(self.image).polygon(
+                self.current_border, outline=color, fill=color)
 
-    def trace_border(self):
+
+
+    # def define_angle(self, width = 2):
+    #     min_set, max_set = 0, 0
+    #     for num, elt in enumerate(self.current_border):
+    #         while not elt and min_set==max_set:
+    #             min_set, max_set = num, num
+    #         if elt :
+    #             max_set = num
+    #     #we assume that the segmentation border are continuous
+    #     # why not reroll to ensure the result ?
+    #     for edge in range(-width, width):
+    #         rand_int = np.random.randint(min_set, max_set+1)
+    #         self.compute_mean_position(rand_int, min_set, max_set)
+    #         if min_set<=rand_int+edge<=max_set:
+    #             self.compute
+
+    #         self.horizontal_borders = True
+
+    def trace_mask(self):
         for _, x, y in self.loop_pixels():
             if self.is_pix_mask(x,y):
                 self.define_border(x,y)
-                self.define_angle()
+                self.from_border_to_mask()
+                self.current_border = []    
 
     
     def check_border(self, x:int, y:int)->bool:

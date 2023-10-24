@@ -11,7 +11,7 @@ def main():
     save_file = args['output']
     filler = MaskFiller(path=dataset_path,
                         save_file=save_file)
-    filler.fill_dataset()
+    filler.fill_dataset_PIL()
     # filler.save_dataset(save_file)
 
 if __name__=="__main__":
