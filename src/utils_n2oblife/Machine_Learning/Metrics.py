@@ -377,6 +377,7 @@ class SegmentationMetrics2D(Metrics):
 		self.all_AUC[id] = AUC
 
 	def compute_AUC(self, predicted = None, target = None) -> list[float]:
+		# equivalent to IoU metrics (let's see pytorch)
 		"""		
 		Compute the Area Under Curve, comparing the prediction and the target
 		Get the number of pixels normalized according to the size of the image

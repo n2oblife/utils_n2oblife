@@ -154,26 +154,26 @@ class MaskFiller(ImageDataset):
                                 pixel_in_edges = True
                     if pixel_in_edges:
                         self.find_border(x,y)
-                        # need to sort clockwise or coutner clockwise
-                        # https://www.baeldung.com/cs/sort-points-clockwise
-                    tmp_draw = ImageDraw.Draw(
-                        self.current_image.image
-                        )
-                    tmp_draw.polygon(
-                        xy=self.current_image.current_border,
-                        fill ="blue", outline ="blue"
-                        )
+                    # https://www.baeldung.com/cs/sort-points-clockwise
+                    #need to find if the center is on a border or inside 
+                    # (usually inside but sometime in a border)
+                    try :
+                        sorted_border = self.sort_clockwise(
+                            self.current_image.current_border
+                            )
+                    except ZeroDivisionError:
+                        sorted_border = self.current_image.current_border 
+                    if len(sorted_border) > 1: 
+                        tmp_draw = ImageDraw.Draw(
+                            self.current_image.image
+                            )
+                        tmp_draw.polygon(
+                            xy=sorted_border,
+                            fill ="blue", outline ="blue"
+                            )
                     self.current_image.current_border = []
-                    #self.filling_function(x+1,y+1)
-                    self.plot_current_image()
-                    breakpoint()
-                # if len(self.edges_coordinates) == 4:
-                #     break
-            # self.plot_current_image()
             progress.close()
             self.save_current_image(self.save_file)
-            print(len(self.edges_coordinates))
-
 
     def get_center(self, edges_list:list):
         """
@@ -190,3 +190,125 @@ class MaskFiller(ImageDataset):
             sL += L
         # return x_center, y_center
         return sx//sL, sy//sL
+    
+    def compare_angles(self, center:tuple, pt1:tuple, pt2:tuple)->bool:
+        """_summary_
+
+        Args:
+            center (tuple): _description_
+            pt1 (tuple): _description_
+            pt2 (tuple): _description_
+
+        Returns:
+            bool: _description_
+        """
+        angle1 = self.get_angle(center, pt1)
+        angle2 = self.get_angle(center, pt2)
+        if angle1<angle2:
+            return True
+        dist1 = self.get_distance(center, pt1)
+        dist2 = self.get_distance(center, pt2)
+        if angle1==angle2 and dist1<dist2:
+            return True
+        return False
+
+    def get_angle(self, center:tuple, point:tuple):
+        x = point[0] - center[0]
+        y = point[1] - center[1]
+        angle = np.arctan2(y,x)
+        if angle <= 0 :
+            angle = 2*np.pi + angle
+        return angle
+    
+    def get_distance(self, pt1:tuple, pt2:tuple):
+        x = pt1[0] - pt2[0]
+        y = pt1[1] - pt2[1]
+        return np.sqrt(x*x + y*y)
+    
+    def merge(self, left:dict, right:dict)->dict:
+        """Function used for timsort adapted for this situation
+        """
+        if len(left) == 0:
+            return right
+        if len(right) == 0:
+            return left
+        result = []
+        index_left = index_right = 0
+
+        while len(result) < len(left) + len(right):
+            # we use a cursor on the arrays while comparing the elements to build new array 
+            if left[index_left][1] <= right[index_right][1]:
+                result.append(left[index_left])
+                index_left += 1
+            else:
+                result.append(right[index_right])
+                index_right += 1
+            # at the end of the array just add the rest of the list
+            if index_right == len(right):
+                result += left[index_left:]
+                break
+            if index_left == len(left):
+                result += right[index_right:]
+                break
+        return result
+
+    def modified_insertion_sort(self, array:dict, left=0, right:int=None)->dict:
+        """Used only for the timsort algorithm"""
+        if right is None:
+            right = len(array) - 1
+
+        for i in range(left + 1, right + 1):
+            key_item = array[i] 
+            j = i - 1
+            while j >= left and array[j][1] > key_item[1]: # comapring the angle
+                array[j + 1] = array[j]
+                j -= 1
+            array[j + 1] = key_item
+        return array
+
+    def timsort(self, array:dict, min_run = 32)->list:
+        """A O(n*log2(n)) algorithm to sort array, adapted for this work.
+
+        Returns a list of the ids sorted by angle.
+        """
+        n = len(array)
+        # Start by slicing and sorting small portions of the array
+        for i in range(0, n, min_run):
+            self.modified_insertion_sort(array, i, min((i + min_run - 1), n - 1))
+
+        # Merge the sorted slices.
+        # Start from `min_run`, doubling the size until surpassing array's length
+        size = min_run
+        while size < n:
+            for start in range(0, n, size * 2):
+                midpoint = start + size - 1
+                end = min((start + size * 2 - 1), (n-1))
+                merged_array = self.merge(
+                    left=array[start:midpoint + 1],
+                    right=array[midpoint + 1:end + 1])
+                array[start:start + len(merged_array)] = merged_array
+            size *= 2
+        return [elt[0] for elt in array]
+
+    def sort_clockwise(self, edges_list:list):
+        """A O(n*log2(n)) sorting algorithm based on this article : https://www.baeldung.com/cs/sort-points-clockwise
+
+        Args:
+            edges_list (list): coordonates to sort clockwise
+
+        Returns:
+            list: a sorted array of the coordinates by angle
+        """
+        # point from which computing the angles with points
+        center_pt = self.get_center(edges_list)
+        # angles computed in radian counter-clockwise to a 0 radian
+        all_angles = []
+        for id, coordinates in enumerate(edges_list):
+            angle = self.get_angle(center=center_pt,
+                                   point=coordinates)
+            distance = self.get_distance(center_pt, coordinates)
+            all_angles.append((id, angle, distance))
+        # we use the timsort because datas are all almost sorted sequencially
+        sorted_ids = self.timsort(all_angles)
+        sorted_list = [edges_list[id] for id in sorted_ids]
+        return sorted_list
