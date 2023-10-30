@@ -13,12 +13,10 @@ class CurrentImage:
         """
         self.path:str = path
         self.image:Image
-        self.format:str = None
         self.id:int
         self.dim_x:int
         self.dim_y:int
         self.current_border = []
-        self.horizontal_borders:bool = None
         self.load_image(id=id, path=path)
     
 
@@ -37,9 +35,7 @@ class CurrentImage:
         self.image = Image.open(self.path)
         self.id = id
         self.dim_x, self.dim_y = self.image.size
-        self.format = self.image.format
         self.current_border = []
-        self.horizontal_borders:bool = None
         #map = self.image.load() to get the map of pixels
 
     def get_pixel(self, x:int, y:int)->tuple[int,int,int]:
@@ -91,44 +87,7 @@ class CurrentImage:
                         if 0<=x+val_x<self.dim_x and 0<=y+val_y<self.dim_y:
                             if self.is_pix_mask(x+val_x, y+val_y) :
                                 self.define_border(x+val_x, y+val_y)
-                                # return None
-            # else: 
-            #     self.current_border.append((x,y))
-            #     return None
                             
-
-    def draw_mask(self, polygon:list = None, color:tuple=(255,255,255)):
-        """Draws a mask based on the current border computed or a list of edges of a polygon.
-
-        Args:
-            polygon (list, optional): The very polygon. Defaults to None.
-            color (tuple, optional): Color to fill with the polygon. Defaults to (255,255,255).
-        """
-        if polygon :
-            ImageDraw.Draw(self.image).polygon(
-                polygon, outline=color, fill=color)
-        else:
-            ImageDraw.Draw(self.image).polygon(
-                self.current_border, outline=color, fill=color)
-
-
-
-    # def define_angle(self, width = 2):
-    #     min_set, max_set = 0, 0
-    #     for num, elt in enumerate(self.current_border):
-    #         while not elt and min_set==max_set:
-    #             min_set, max_set = num, num
-    #         if elt :
-    #             max_set = num
-    #     #we assume that the segmentation border are continuous
-    #     # why not reroll to ensure the result ?
-    #     for edge in range(-width, width):
-    #         rand_int = np.random.randint(min_set, max_set+1)
-    #         self.compute_mean_position(rand_int, min_set, max_set)
-    #         if min_set<=rand_int+edge<=max_set:
-    #             self.compute
-
-    #         self.horizontal_borders = True
 
     def trace_mask(self):
         for _, x, y in self.loop_pixels():
@@ -136,38 +95,6 @@ class CurrentImage:
                 self.define_border(x,y)
                 self.from_border_to_mask()
                 self.current_border = []    
-
-    
-    def check_border(self, x:int, y:int)->bool:
-        """Check if the (x,y) pixel is eligible as a border
-
-        Args:
-            x (int): Position on x axis from 0 to (dim_x-1)
-            y (int): Position on y axis from 0 to (dim_y-1)
-        """
-        # tmp = x 
-        # while self.is_pix_mask(tmp,y):
-        #     tmp-=1
-        #     if tmp == 0:
-        #         return True
-        return True
-
-    def is_border(self, x:int, y:int)->bool:
-        """Checks if a given pixel is a border or not by looking at the surrounding ones on the same row.
-
-        Args:
-            x (int): Position on x axis from 0 to (dim_x-1)
-            y (int): Position on y axis from 0 to (dim_y-1)
-        """
-        if 0<x<self.dim_x-1 and 0<y<self.dim_y:
-            return (self.check_border(x,y) 
-                    and (
-                        (self.is_pix_mask(x,y) and not self.is_pix_mask(x+1,y))
-                        or (not self.is_pix_mask(x,y) 
-                            and self.is_pix_mask(x+1,y) 
-                            and not self.is_pix_mask(x+2,y))
-                        )
-                    )
 
 
     def fill_pixel(self, x:int, y:int, new_pix:tuple[int])->None:
@@ -220,16 +147,14 @@ class ImageDataset:
                                       path=self.path+'/'+self.all_images[id])
     
     def plot_current_image(self)->None:
-        self.current_image.plot_image()
+        self.current_image.image.show()
 
     def save_current_image(self, save_file='.')->None:
         file_name = self.all_images[self.current_image.id]        
-        print("save file :",save_file)
-        print("file name :",file_name)
         self.current_image.image.save(save_file+'/'+file_name)
     
     def save_dataset(self, save_file='.')->None:
-        for img in self.loop_all_images():
+        for _ in self.loop_all_images():
             self.save_current_image(save_file)
         
     def loop_all_images(self):

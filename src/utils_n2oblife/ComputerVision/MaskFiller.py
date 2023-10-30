@@ -27,16 +27,16 @@ class MaskFiller(ImageDataset):
     """
     def __init__(self, path:str = None, save_file='.', mask_pixel=(255,255,255)) -> None:
         super().__init__(path)
+        ## other parameters in this class
         # self.path = path
         # self.all_images = []
         # self.current_image = CurrentImage()
         self.mask_pixel = mask_pixel
         self.edges_coordinates = []
-        ## load only for the scanline function
-        self.edge_table:list[EdgeTuple] = []
-        self.active_list:EdgeTuple
-        self.filling_function = self.boundary_fill
         self.save_file = save_file
+        ## load only for the scanline function
+        # self.edge_table:list[EdgeTuple] = []
+        # self.active_list:EdgeTuple
 
     def boundary_fill(self, x:int, y:int)->None:
         """The boundary fill algorithm adapted from : https://www.geeksforgeeks.org/boundary-fill-algorithm/
@@ -71,110 +71,6 @@ class MaskFiller(ImageDataset):
         NotImplemented
         #TODO
     
-    def fill_from_line(self, edges_list:list):
-        """You can change the filling function with the parameters
-        """
-        n_elt = len(edges_list)
-        for i in range(0, n_elt, 2):
-            edge = edges_list[i]
-            self.filling_function(x=edge[0]+1, y=edge[1])
-            self.current_image.fill_pixel(edge[0],edge[1], (255,0,0))
-            self.current_image.fill_pixel(edges_list[i+1][0],edges_list[i+1][1], (255,0,0))
-
-    def find_inside(self, edges_list:list, far_away=10):
-        rand_id = np.random.randint(0,len(edges_list)) 
-        rand_x, rand_y = edges_list[rand_id]
-        final_x, final_y = rand_x, rand_y
-        for i in range(1,far_away):
-            if (rand_x+i, rand_y) in edges_list:
-                final_x = rand_x+i//2
-            elif (rand_x-i, rand_y) in edges_list:
-                final_x = rand_x+i//2
-        for j in range(1, far_away):
-            if (final_x, rand_y+j) in edges_list:
-                final_y = rand_y+j//2
-            elif (final_x, rand_y-j) in edges_list:
-                final_y = rand_y+j//2
-        return final_x,final_y
-        
-    def fill_from_edges(self, edges_list:list):
-        x,y = self.find_inside(edges_list, far_away=6)
-        self.filling_function(x,y)
-
-    def fill_dataset(self):
-        edges_coordinates = []
-        n_images = len(self.all_images)
-        for img in self.loop_all_images():
-            progress = tqdm(total=n_images+1, 
-                            desc=f"Processing image {img.id+1}/{n_images}",
-                            ncols=75)
-            for _,x,y in img.loop_pixels():
-                progress.update(1)
-                if x==0:
-                    # reset the edges at the begining each line
-                    edges_coordinates = []
-                if x==img.dim_x-1:
-                    length = len(edges_coordinates)
-                    if length % 2 == 0 and length!=0:
-                        self.fill_from_line(edges_coordinates)
-                        # to debug the border
-                        self.plot_current_image()
-                        breakpoint()
-                else :
-                    if img.is_border(x,y):
-                        #img.fill_pixel(x,y, (255,0,0))
-                        edges_coordinates.append((x,y))
-            progress.close()
-            self.save_current_image(self.save_file)
-
-    def find_border(self, x:int, y:int):
-        self.current_image.define_border(x,y)
-        # self.fill_from_edges(
-        #     self.current_image.current_border)
-        self.edges_coordinates.append(
-            self.current_image.current_border)
-        
-    def fill_dataset_PIL(self):
-        n_images = len(self.all_images)
-        pixel_in_edges = False
-        for img in self.loop_all_images():
-            progress = tqdm(total=n_images+1, 
-                            desc=f"Processing image {img.id+1}/{n_images}",
-                            ncols=75)
-            self.edges_coordinates = []
-            pixel_in_edges = False
-            for _,x,y in img.loop_pixels():
-                progress.update(1)
-                if self.current_image.is_pix_mask(x,y):
-                    if len(self.edges_coordinates) == 0:
-                        self.find_border(x,y)
-                    else :
-                        for edges in self.edges_coordinates:
-                            if not (x,y) in edges:
-                                pixel_in_edges = True
-                    if pixel_in_edges:
-                        self.find_border(x,y)
-                    # https://www.baeldung.com/cs/sort-points-clockwise
-                    #need to find if the center is on a border or inside 
-                    # (usually inside but sometime in a border)
-                    try :
-                        sorted_border = self.sort_clockwise(
-                            self.current_image.current_border
-                            )
-                    except ZeroDivisionError:
-                        sorted_border = self.current_image.current_border 
-                    if len(sorted_border) > 1: 
-                        tmp_draw = ImageDraw.Draw(
-                            self.current_image.image
-                            )
-                        tmp_draw.polygon(
-                            xy=sorted_border,
-                            fill ="blue", outline ="blue"
-                            )
-                    self.current_image.current_border = []
-            progress.close()
-            self.save_current_image(self.save_file)
-
     def get_center(self, edges_list:list):
         """
         Returns:
@@ -190,27 +86,6 @@ class MaskFiller(ImageDataset):
             sL += L
         # return x_center, y_center
         return sx//sL, sy//sL
-    
-    def compare_angles(self, center:tuple, pt1:tuple, pt2:tuple)->bool:
-        """_summary_
-
-        Args:
-            center (tuple): _description_
-            pt1 (tuple): _description_
-            pt2 (tuple): _description_
-
-        Returns:
-            bool: _description_
-        """
-        angle1 = self.get_angle(center, pt1)
-        angle2 = self.get_angle(center, pt2)
-        if angle1<angle2:
-            return True
-        dist1 = self.get_distance(center, pt1)
-        dist2 = self.get_distance(center, pt2)
-        if angle1==angle2 and dist1<dist2:
-            return True
-        return False
 
     def get_angle(self, center:tuple, point:tuple):
         x = point[0] - center[0]
@@ -312,3 +187,71 @@ class MaskFiller(ImageDataset):
         sorted_ids = self.timsort(all_angles)
         sorted_list = [edges_list[id] for id in sorted_ids]
         return sorted_list
+
+    def draw_mask(self, polygon:list=None, color='blue'):
+        """Draws a mask based on the current border computed or a list of edges of a polygon.
+
+        Args:
+            polygon (list, optional): The very polygon. Defaults to None.
+            color (tuple, optional): Color to fill with the polygon. Defaults to (255,255,255).
+        """
+        tmp_draw = ImageDraw.Draw(self.current_image.image)
+        if polygon :
+            if len(polygon)>1:
+                ImageDraw.Draw(self.current_image.image).polygon(
+                    polygon, outline=color, fill=color)
+        else:
+            if len(self.current_image.current_border)>1:
+                ImageDraw.Draw(self.current_image.image).polygon(
+                    self.current_border, outline=color, fill=color)
+
+    def find_border(self, x:int, y:int):
+        self.current_image.define_border(x,y)
+        self.edges_coordinates.append(
+            self.current_image.current_border)
+        
+    def fill_dataset(self):
+        n_images = len(self.all_images)
+        pixel_in_edges = False
+        for img in self.loop_all_images():
+            progress = tqdm(total=n_images+1, 
+                            desc=f"Processing image {img.id+1}/{n_images}",
+                            ncols=75)
+            self.edges_coordinates = []
+            pixel_in_edges = False
+            for _,x,y in img.loop_pixels():
+                progress.update(1)
+                if self.current_image.is_pix_mask(x,y):
+                    if len(self.edges_coordinates) == 0:
+                        self.find_border(x,y)
+                    else :
+                        for edges in self.edges_coordinates:
+                            if not (x,y) in edges:
+                                pixel_in_edges = True
+                    if pixel_in_edges:
+                        self.find_border(x,y)
+                    # need to find if the center is on a border or inside
+                    # to avoid the try 
+                    # (usually inside but sometime in a border)
+                    try :
+                        sorted_border = self.sort_clockwise(
+                            self.current_image.current_border
+                            )
+                    except ZeroDivisionError:
+                        pass
+                    self.draw_mask(polygon=sorted_border) 
+                    # if len(sorted_border) > 1: 
+                    #     tmp_draw = ImageDraw.Draw(
+                    #         self.current_image.image
+                    #         )
+                    #     tmp_draw.polygon(
+                    #         xy=sorted_border,
+                    #         fill ="blue", outline ="blue"
+                    #         )
+                    self.current_image.current_border = []
+            progress.close()
+            self.save_current_image(self.save_file)
+
+    def identify_segments(self):
+        #TODO
+        NotImplemented

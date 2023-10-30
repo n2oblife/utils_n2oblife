@@ -1,36 +1,55 @@
 import os
 import torch
 import numpy as np
-from numpy import random
+import random
 
 class Device():
-    def __init__(self) -> None:
-        self._gpu = torch.cuda.is_available()
+    def __init__(self, seed  = 123456789) -> None:
+        self.gpu = torch.cuda.is_available()
+        self.seed = seed
     
     def load_seed(self):
         # set seed for reproductibility
-        print('Setting up seed...')
-        seed  = 123456789
         try :
-            os.environ['PYTHONHASHSEED'] = str(seed)
+            import os
+            os.environ['PYTHONHASHSEED'] = str(self.seed)
         except :
             pass
         try :
-            random.seed(seed)
+            import random
+            random.seed(self.seed)
         except :
             pass
         try :
-            np.random.seed(seed)
+            import numpy as np
+            np.random.seed(self.seed)
         except :
             pass
-        torch.manual_seed(seed)
-        if self._gpu :
-            torch.cuda.manual_seed(seed)
-            torch.cuda.manual_seed_all(seed)
-            torch.backends.cudnn.deterministic = True
-            torch.backends.cudnn.benchmark = False
-            # empty cache
-            torch.cuda.empty_cache()
+        try:
+            import tensorflow as tf
+            tf.set_random_seed(self.seed)
+        except :
+            pass
+        try:
+            import tensorflow as tf
+            from keras import backend as K
+            session_conf = tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
+            sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
+            K.set_session(sess)
+        except:
+            pass
+        try:
+            import torch
+            torch.manual_seed(self.seed)
+            if self.gpu :
+                torch.cuda.manual_seed(self.seed)
+                torch.cuda.manual_seed_all(self.seed)
+                torch.backends.cudnn.deterministic = True
+                torch.backends.cudnn.benchmark = False
+                # empty cache
+                torch.cuda.empty_cache()
+        except:
+            pass
 
 class Device_CEA(Device):
     def __init__(self) -> None:
