@@ -17,8 +17,8 @@ class SegmentationMetrics2D(Metrics):
 		self.qualitative_eval = {} # comparing the mask to threshold 
 		self.all_eval = {}
 
-    def load(self, predicted, target):
-        self.
+    # def load(self, predicted, target):
+    #     self.
 
 	def save(self, id='', masks = [], TP=0, FP=0, FN=0, AP=0, AUC=0) -> None :
 		NotImplemented

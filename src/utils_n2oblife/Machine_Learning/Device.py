@@ -5,7 +5,7 @@ import random
 
 class Device():
     def __init__(self, seed  = 123456789) -> None:
-        self.gpu = torch.cuda.is_available()
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.seed = seed
     
     def load_seed(self):

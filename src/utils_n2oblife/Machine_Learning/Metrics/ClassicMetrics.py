@@ -1,6 +1,7 @@
 #This class is an implementation of some metrics 
 #some can be seen here : https://en.wikipedia.org/wiki/Sensitivity_and_specificity
 
+import time
 import functools
 import numpy as np
 
