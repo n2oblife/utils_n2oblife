@@ -1,34 +1,31 @@
-@if (@CodeSection == @Batch) @then
-@echo off & setlocal
+@if (@a==@b) @end /*
 
-set "url=http://www.domain.com/data/page/1"
+:: web_parsing.bat <url>
+:: fetch a web page and print it on terminal
 
+@echo off
+setlocal
+if "%~1"=="" goto usage
+echo "%~1" | findstr /i "https*://" >NUL || goto usage
 
-for /f "delims=" %%I in ('cscript /nologo /e:JScript "%~f0" "%url%"') do (
-    rem // do something useful with %%I
-    echo Link found: %%I
-)
-
+set "URL=%~1"
+for /f "delims=" %%I in ('cscript /nologo /e:jscript "%~f0" "%URL%"') do (
+    rem process the HTML line-by-line
+    echo(%%I)
+    )
 goto :EOF
-@end // end batch / begin JScript hybrid code
 
-// returns a DOM root object
-function fetch(url) {
-    var XHR = WSH.CreateObject("Microsoft.XMLHTTP"),
-        DOM = WSH.CreateObject('htmlfile');
+:usage
+echo Usage: %~nx0 <URL>
+echo     for example: %~nx0 http://www.google.com/
+echo;
+echo The URL must be fully qualified, including the http:// or https://
+goto :EOF
 
-    XHR.open("GET",url,true);
-    XHR.setRequestHeader('User-Agent','XMLHTTP/1.0');
-    XHR.send('');
-    while (XHR.readyState!=4) {WSH.Sleep(25)};
-    DOM.write('<meta http-equiv="x-ua-compatible" content="IE=9" />');
-    DOM.write(XHR.responseText);
-    return DOM;
-}
-
-var DOM = fetch(WSH.Arguments(0)),
-    links = DOM.getElementsByTagName('a');
-
-for (var i in links)
-    if (links[i].href && /\/post\/view\//i.test(links[i].href))
-        WSH.Echo(links[i].href);
+JScript */
+var x=new ActiveXObject("Microsoft.XMLHTTP");
+x.open("GET",WSH.Arguments(0),true);
+x.setRequestHeader('User-Agent','XMLHTTP/1.0');
+x.send('');
+while (x.readyState!=4) {WSH.Sleep(50)};
+WSH.Echo(x.responseText);
