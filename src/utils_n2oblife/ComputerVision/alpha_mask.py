@@ -1,8 +1,19 @@
 # This file is made as lib to help constructing alpha mask
+# This script takes an image as input and checks if it 
 
 import numpy as np
-from PIL import Image
 import matplotlib.pyplot as plt
+from PIL import Image
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+
+
+def parse_input():
+    parser = ArgumentParser(
+        description="Finalizing the alpha frame to use.",
+        formatter_class=ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--input')
+    parser.add_argument('--output', default='output.png')
+    return vars(parser.parse_args())
 
 def get_max_pix(data:np.array):
     pix_values = np.zeros(256)
@@ -11,9 +22,10 @@ def get_max_pix(data:np.array):
             try:
                 max_pix = max(pix)
             except TypeError:
-                max_pix = pix            
+                max_pix = pix
             pix_values[max_pix] += 1
     return pix_values
+
 
 
 def data_reparition(data:np.array, title=""):
@@ -32,6 +44,7 @@ def finalize_mask(image:Image, filter=250):
     pixels = image.load() # create a pixels map
     for i in range(image.size[0]):
         for j in range(image.size[1]):
+            pix = pixels[i,j]
             try:
                 white_pix = (max(pixels[i,j]) >= filter)
                 RGB = True
@@ -48,7 +61,18 @@ def finalize_mask(image:Image, filter=250):
                     pixels[i,j] = 255
                 else:
                     pixels[i,j] = 0
-    return image
+    # data = np.asarray(image)
+    # data_reparition(data, "test")
 
+
+if __name__ == '__main__':
+    # Parse args
+    vars = parse_input()
+    input = vars['input']
+    output = vars['output']
+    image = Image.open(input)
+    finalize_mask(image, 240)
+    image.save('output.png')
+    data_reparition(np.asarray(image))
 
             
