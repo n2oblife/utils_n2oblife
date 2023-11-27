@@ -44,7 +44,8 @@ def parse_input(
         prog_name = "",
         descr = "",
         epilog = "",
-        mode='default'):
+        mode='default'
+        )-> dict:
     """An easier way to parse the inputs of python script
 
     Args:
