@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 clear
 
+# to output the logs and errors 
+# command > out.log 2> err.log or /dev/null
+
 # Default values (CHANGE)
 VARIABLE1="var1"
 VARIABLE2="var2"

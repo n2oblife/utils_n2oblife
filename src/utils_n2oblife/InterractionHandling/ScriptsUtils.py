@@ -88,7 +88,8 @@ def in_venv():
                   )
     return sys.prefix != base_prfix
 
-def get_python_version();
+def get_python_version():
     try :
         return sys.version.splite(' ')[0]
     except:
+        pass
