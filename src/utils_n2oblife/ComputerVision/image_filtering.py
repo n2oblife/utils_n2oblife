@@ -70,7 +70,11 @@ def gaussian_filtering(image:np.ndarray, i:int, j:int, sig=1., k_size=3):
     kernel_im = build_kernel(image, i, j, k_size)
     return gaussian_filter(kernel_im, sig)
 
-def uniform_filtering(image:np.ndarray, i:int, j:int, sig=1., k_size=3):
+def uniform_filtering(
+        image:np.ndarray, 
+        i:int, j:int, 
+        sig=1., k_size=3
+    )->np.ndarray:
     """
     Apply a uniform filter to a specific pixel in an image.
 
@@ -104,7 +108,12 @@ def median_filtering(image:np.ndarray, i:int, j:int, sig=1., k_size=3)->float:
     kernel_im = build_kernel(image, i, j, k_size)
     return median_filter(kernel_im, sig)
 
-def bilateral_filtering(image:np.ndarray, i:int, j:int, d=9, sigmaColor=75, sigmaSpace=75, k_size=3)->cv2.Mat:
+def bilateral_filtering(
+        image:np.ndarray, 
+        i:int, j:int, 
+        d=9, sigmaColor=75, sigmaSpace=75, 
+        k_size=3
+    )->cv2.Mat:
     """
     Apply a bilateral filter to a specific pixel in an image.
 
@@ -123,7 +132,7 @@ def bilateral_filtering(image:np.ndarray, i:int, j:int, d=9, sigmaColor=75, sigm
     kernel_im = build_kernel(image, i, j, k_size)
     return cv2.bilateralFilter(kernel_im, d, sigmaColor, sigmaSpace)
 
-def wiener_filtering(image:np.ndarray, i:int, j:int, k_size=3):
+def wiener_filtering(image:np.ndarray, i:int, j:int, k_size=3)->np.ndarray:
     """
     Apply a Wiener filter to a specific pixel in an image.
 
@@ -139,7 +148,11 @@ def wiener_filtering(image:np.ndarray, i:int, j:int, k_size=3):
     kernel_im = build_kernel(image, i, j, k_size)
     return wiener(kernel_im)
 
-def bilateral_denoise_filtering(image:np.ndarray, i:int, j:int, k_size=3, sigma_color=0.05, sigma_spatial=15, multichannel=False):
+def bilateral_denoise_filtering(
+        image:np.ndarray, 
+        i:int, j:int, k_size=3, 
+        sigma_color=0.05, sigma_spatial=15, multichannel=False
+    ):
     """
     Apply a bilateral denoise filter to a specific pixel in an image.
 
@@ -158,7 +171,12 @@ def bilateral_denoise_filtering(image:np.ndarray, i:int, j:int, k_size=3, sigma_
     kernel_im = build_kernel(image, i, j, k_size)
     return denoise_bilateral(kernel_im, sigma_color=sigma_color, sigma_spatial=sigma_spatial, multichannel=multichannel)
 
-def nl_means_filtering(image:np.ndarray, i:int, j:int, k_size=3, h=1.15, fast_mode=True, patch_size=5, patch_distance=6, multichannel=False):
+def nl_means_filtering(
+        image:np.ndarray, 
+        i:int, j:int, k_size=3, 
+        h=1.15, fast_mode=True, 
+        patch_size=5, patch_distance=6, multichannel=False
+    ):
     """
     Apply a non-local means filter to a specific pixel in an image.
 
