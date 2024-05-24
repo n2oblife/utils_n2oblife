@@ -9,7 +9,7 @@ from scipy.signal import convolve2d
 
 
 
-def calculate_mse(original, enhanced):
+def calculate_mse(original:np.ndarray, enhanced:np.ndarray):
     """
     Calculate the Mean Squared Error (MSE) between two images.
     A basic but useful metric for comparing the difference between 
@@ -25,7 +25,7 @@ def calculate_mse(original, enhanced):
     return np.mean((original - enhanced) ** 2)
 
 
-def calculate_psnr(original, enhanced, max_pixel = 255.0):
+def calculate_psnr(original:np.ndarray, enhanced:np.ndarray, max_pixel = 255.0):
     """
     Calculate the Peak Signal-to-Noise Ratio (PSNR) between two images.
     This measures the ratio between the maximum possible power of a signal 
@@ -52,7 +52,7 @@ def calculate_psnr(original, enhanced, max_pixel = 255.0):
     return 20 * np.log10(max_pixel / np.sqrt(mse))
 
 
-def calculate_ssim(img1, img2, sigma=1.5, L=255):
+def calculate_ssim(img1:np.ndarray, img2:np.ndarray, sigma=1.5, L=255):
     """
     Compute the Structural Similarity Index (SSIM) between two images.
     This metric compares the similarity between two images, considering 
@@ -96,7 +96,7 @@ def calculate_ssim(img1, img2, sigma=1.5, L=255):
 
     return np.mean(numerator / denominator)
 
-def calculate_cei(original, enhanced):
+def calculate_cei(original:np.ndarray, enhanced:np.ndarray):
     """
     Calculate the Contrast Enhancement Index (CEI) between two images.
     Measures the improvement in contrast, which is often crucial for infrared imagery.
@@ -117,7 +117,7 @@ def calculate_cei(original, enhanced):
     return enhanced_contrast / original_contrast
 
 
-def calculate_entropy(image):
+def calculate_entropy(image:np.ndarray):
     """
     Calculate the entropy of an image.
     Measures the amount of information or detail in the image. 
@@ -133,7 +133,7 @@ def calculate_entropy(image):
     return shannon_entropy(image)
 
 
-def calculate_edge_preservation(original, enhanced):
+def calculate_edge_preservation(original:np.ndarray, enhanced:np.ndarray)->float:
     """
     Calculate the edge preservation ratio between two images.
     Evaluates how well edges (which are crucial for identifying objects) 
@@ -156,7 +156,7 @@ def calculate_edge_preservation(original, enhanced):
     return np.sum(original_edges & enhanced_edges) / np.sum(original_edges)
 
 
-def calculate_nrmse(original, enhanced):
+def calculate_nrmse(original:np.ndarray, enhanced:np.ndarray)->float:
     """
     Calculate the Normalized Root Mean Square Error (NRMSE) between two images.
     A variation of MSE that normalizes the error.
@@ -173,7 +173,7 @@ def calculate_nrmse(original, enhanced):
     return nrmse(original, enhanced)
 
 
-def estimate_kernels(image):
+def estimate_kernels(image:np.ndarray):
     """
     Estimate the column difference kernel (h) and the row difference kernel (hT)
     from an enhanced image using gradient-based methods.
@@ -197,7 +197,7 @@ def estimate_kernels(image):
     
     return h, hT
 
-def calculate_roughness(image):
+def calculate_roughness(image:np.ndarray):
     """
     Calculate the roughness of an image to evaluate streak non-uniform noise.
 

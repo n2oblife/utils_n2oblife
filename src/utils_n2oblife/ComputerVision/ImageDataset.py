@@ -119,8 +119,13 @@ class CurrentImageToManipulate(CurrentImage):
                 yield self.image.load()[x,y], x,y 
     
 class ImageDataset:
+    """A Dataset class to manipulate images with the PIL library.
+
+    Args:
+        path (str): Path to the dataset folder.
+    """
     def __init__(self, path:str=None) -> None:
-        """A Dataset class to manipulate images with the PIL library.
+        """Init a Dataset class to manipulate images with the PIL library.
 
         Args:
             path (str): Path to the dataset folder.
@@ -131,6 +136,11 @@ class ImageDataset:
         self.load_dataset(path=path)
     
     def __len__(self)->int:
+        """Get number of images in the dataset.
+
+        Returns:
+            int: Length of the dataset
+        """
         return len(self.all_images)
     
     def load_dataset(self, path:str=None)->None:
