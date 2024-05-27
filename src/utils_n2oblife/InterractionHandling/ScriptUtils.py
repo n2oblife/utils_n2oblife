@@ -13,7 +13,7 @@ def set_logging_info(mode='default')->None:
 class ParserOptions:
     def __init__(self, 
                  long:str, 
-                 short:str, 
+                 short:str=None, 
                  convert:type|function=None,
                  default:str = None, 
                  choices:list[str]=None, 
@@ -23,8 +23,8 @@ class ParserOptions:
         """A custom class to help manage the parsing of input for python script and use them as arguments.
         
         Args:
-            long (str): A letter or two for arg.
-            short (str,optional): The actual name of the arg. Defaults to None.
+            long (str): The actual name of the arg.
+            short (str,optional): A letter or two for arg. Defaults to None.
             convert (type|function, optional): Automatically convert an argument to the given type.
             default (str, optional): A default arg to give. Defaults to None.
             choices (list[any], optional): A list of choices the args that can be used. Default to None.
@@ -66,10 +66,15 @@ def parse_input(
         raise NotImplementedError("The non default case has not been implemented yet")
     if parser_config:
         if type(parser_config) == ParserOptions:
-            parser.add_argument('-'+parser_config.short, 
-                    '--'+parser_config.long, 
-                    default=parser_config.default,
-                    help=parser_config.help)
+            if parser_config.short :
+                parser.add_argument('-'+parser_config.short, 
+                        '--'+parser_config.long, 
+                        default=parser_config.default,
+                        help=parser_config.help)
+            else :
+                parser.add_argument('--'+parser_config.long, 
+                        default=parser_config.default,
+                        help=parser_config.help)
         elif type(parser_config) == list:
             for parse_arg in parser_config:
                 parser.add_argument('-'+parse_arg.short, 

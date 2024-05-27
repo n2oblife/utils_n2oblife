@@ -1,5 +1,5 @@
 from utils_n2oblife.ComputerVision.MaskFiller import MaskFiller
-from utils_n2oblife.InterractionHandling.ScriptsUtils import *
+from utils_n2oblife.InterractionHandling.ScriptUtils import *
 
 def main():
     set_logging_info()
