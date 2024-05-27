@@ -20,3 +20,15 @@ def build_kernel(image:list, i:int, j:int, k_size=3):
             if 0 <= l < len(image) and 0 <= m < len(image[0]):
                 kernel_im.append(image[l][m])
     return kernel_im
+
+def Yij(frame: list | np.ndarray):
+    """
+    Retrieve the value of the central pixel in a given frame.
+
+    Args:
+        frame (list | np.ndarray): The input frame as a 2D list or array.
+
+    Returns:
+        The value of the central pixel in the frame.
+    """
+    return frame[len(frame) // 2][len(frame[0]) // 2]

@@ -1,208 +1,256 @@
-from common import build_kernel
-import cv2
 import numpy as np
-from statistics import mean 
-from scipy.ndimage import gaussian_filter, uniform_filter, median_filter
-from scipy.signal import wiener
-from skimage.restoration import denoise_bilateral, denoise_nl_means, estimate_sigma
+from skimage.feature import canny
+from skimage.measure import shannon_entropy
+from skimage.metrics import normalized_root_mse as nrmse
+from skimage import filters
+from scipy.ndimage import gaussian_filter
+from scipy.signal import convolve2d
 
-def mean_filter(image:list, i:int, j:int, k_size=3)->float:
+
+def init_metrics()->dict[str, list]:
     """
-    Apply a mean filter to a specific pixel in an image.
-
-    Args:
-        image (list): The input image as a 2D list or array.
-        i (int): The row index of the target pixel.
-        j (int): The column index of the target pixel.
-        k_size (int, optional): The size of the kernel. Defaults to 3.
+    Initialize a dictionary to store various image quality metrics.
 
     Returns:
-        float: The mean value of the kernel surrounding the target pixel.
+        dict: A dictionary with keys for different metrics, each initialized to an empty list.
+              The keys include "mse", "psnr", "roughness", "ssim", "cei", "entropy",
+              "edge_preservation", and "nmse".
     """
-    kernel_im = []
-    for l in range(i-k_size, i+k_size):
-        for m in range(j-k_size, j+k_size):
-            if 0 <= l < len(image) and 0 <= m < len(image[0]):
-                kernel_im.append(image[l, m])
-    return mean(kernel_im)
+    return {
+        "mse": [],
+        "psnr": [],
+        "roughness": [],
+        "ssim": [],
+        "cei": [],
+        "entropy": [],
+        "edge_preservation": [],
+        "nmse": []
+        }
 
-def gauss(x, sig=1):
+def calculate_mse(original:np.ndarray, enhanced:np.ndarray)->float:
     """
-    Calculate the Gaussian function value for a given x.
+    Calculate the Mean Squared Error (MSE) between two images.
+    A basic but useful metric for comparing the difference between 
+    original and enhanced images.
 
     Args:
-        x (float): The input value.
-        sig (int, optional): The standard deviation of the Gaussian function. Defaults to 1.
+        original (numpy.ndarray): The original image.
+        enhanced (numpy.ndarray): The enhanced image.
 
     Returns:
-        float: The Gaussian function value.
+        float: The Mean Squared Error between the original and enhanced images.
     """
-    return 1/(2*np.pi*sig**2) * np.exp(-x**2 / (2*sig**2))
+    return np.mean((original - enhanced) ** 2)
 
-def gauss_kernel(x, y, sig=1):
+
+def calculate_psnr(original:np.ndarray, enhanced:np.ndarray, max_pixel = 255.0)->float:
     """
-    Calculate the Gaussian function value for a given x and y.
+    Calculate the Peak Signal-to-Noise Ratio (PSNR) between two images.
+    This measures the ratio between the maximum possible power of a signal 
+    and the power of corrupting noise that affects the quality of its representation.
 
     Args:
-        x (float): The x-coordinate.
-        y (float): The y-coordinate.
-        sig (int, optional): The standard deviation of the Gaussian function. Defaults to 1.
+        original (numpy.ndarray): The original image.
+        enhanced (numpy.ndarray): The enhanced image.
+        max_pixel (float, optional): The maximum pixel value (typically 255 for 8-bit images). 
+                                     Defaults to 255.0.
 
     Returns:
-        float: The Gaussian function value.
+        float: The PSNR value between the original and enhanced images.
+              If the images are identical (mse = 0), returns positive infinity.
     """
-    return 1/(2*np.pi*sig**2) * np.exp(-(x**2 + y**2) / (2*sig**2))
+    # Compute the Mean Squared Error (MSE) between the original and enhanced images
+    mse = np.mean((original - enhanced) ** 2)
+    
+    # If MSE is zero (images are identical), return positive infinity
+    if mse == 0:
+        return float('inf')
+    
+    # Calculate PSNR using the formula: 20 * log10(max_pixel / sqrt(mse))
+    return 20 * np.log10(max_pixel / np.sqrt(mse))
 
-def gaussian_filtering(image:np.ndarray, i:int, j:int, sig=1., k_size=3):
+
+def calculate_ssim(img1:np.ndarray, img2:np.ndarray, sigma=1.5, L=255)->float:
     """
-    Apply a Gaussian filter to a specific pixel in an image.
+    Compute the Structural Similarity Index (SSIM) between two images.
+    This metric compares the similarity between two images, considering 
+    changes in structural information.
 
     Args:
-        image (np.ndarray): The input image as a NumPy array.
-        i (int): The row index of the target pixel.
-        j (int): The column index of the target pixel.
-        sig (float, optional): The standard deviation for the Gaussian filter. Defaults to 1.
-        k_size (int, optional): The size of the kernel. Defaults to 3.
+        img1 (numpy.ndarray): First input image (grayscale).
+        img2 (numpy.ndarray): Second input image (grayscale).
+        sigma (float, optional): Standard deviation of the Gaussian filter. Defaults to 1.5.
+        L (int, optional): Dynamic range of pixel values (e.g., 255 for 8-bit images).. Defaults to 255.
 
     Returns:
-        np.ndarray: The filtered value of the target pixel.
+        int: SSIM index: A scalar value between -1 and 1. SSIM of 1 indicates perfect similarity.
     """
-    if len(image) > k_size:
-        kernel_im = build_kernel(image, i, j, k_size)
-    return gaussian_filter(kernel_im, sig)
+    # Ensure images are of float type
+    img1 = img1.astype(np.float64)
+    img2 = img2.astype(np.float64)
 
-def uniform_filtering(
-        image:np.ndarray, 
-        i:int, j:int, 
-        sig=1., k_size=3
-    )->np.ndarray:
+    # Constants for SSIM calculation
+    C1 = (0.01 * L) ** 2
+    C2 = (0.03 * L) ** 2
+
+    # Gaussian filter kernel
+    kernel = gaussian_filter(np.ones_like(img1), sigma)
+
+    # Mean of images
+    mu1 = gaussian_filter(img1, sigma) / kernel
+    mu2 = gaussian_filter(img2, sigma) / kernel
+
+    # Variance of images
+    mu1_sq = mu1 ** 2
+    mu2_sq = mu2 ** 2
+    mu1_mu2 = mu1 * mu2
+
+    # Covariance of images
+    sigma12 = gaussian_filter(img1 * img2, sigma) / kernel - mu1_mu2
+
+    # SSIM calculation
+    numerator = (2 * mu1_mu2 + C1) * (2 * sigma12 + C2)
+    denominator = (mu1_sq + mu2_sq + C1) * (np.var(img1) + np.var(img2) + C2)
+
+    return np.mean(numerator / denominator)
+
+def calculate_cei(original:np.ndarray, enhanced:np.ndarray)->float:
     """
-    Apply a uniform filter to a specific pixel in an image.
+    Calculate the Contrast Enhancement Index (CEI) between two images.
+    Measures the improvement in contrast, which is often crucial for infrared imagery.
 
     Args:
-        image (np.ndarray): The input image as a NumPy array.
-        i (int): The row index of the target pixel.
-        j (int): The column index of the target pixel.
-        sig (float, optional): The size of the uniform filter. Defaults to 1.
-        k_size (int, optional): The size of the kernel. Defaults to 3.
+        original (numpy.ndarray): The original image.
+        enhanced (numpy.ndarray): The enhanced image.
 
     Returns:
-        np.ndarray: The filtered value of the target pixel.
+        float: The Contrast Enhancement Index (CEI) indicating the enhancement level.
+               A CEI greater than 1 suggests enhanced contrast.
     """
-    if len(image) > k_size:
-        kernel_im = build_kernel(image, i, j, k_size)
-    return uniform_filter(kernel_im, sig)
+    # Compute the standard deviation (contrast) of the original and enhanced images
+    original_contrast = np.std(original)
+    enhanced_contrast = np.std(enhanced)
+    
+    # Calculate the Contrast Enhancement Index (CEI) as the ratio of enhanced contrast to original contrast
+    return enhanced_contrast / original_contrast
 
-def median_filtering(image:np.ndarray, i:int, j:int, sig=1., k_size=3)->float:
+
+def calculate_entropy(image:np.ndarray)->float |np.ndarray:
     """
-    Apply a median filter to a specific pixel in an image.
+    Calculate the entropy of an image.
+    Measures the amount of information or detail in the image. 
+    Higher entropy typically indicates a more detailed image.
 
     Args:
-        image (np.ndarray): The input image as a NumPy array.
-        i (int): The row index of the target pixel.
-        j (int): The column index of the target pixel.
-        sig (float, optional): The size of the median filter. Defaults to 1.
-        k_size (int, optional): The size of the kernel. Defaults to 3.
+        image (numpy.ndarray): The input image (grayscale or color).
 
     Returns:
-        float: The filtered value of the target pixel.
+        float: The entropy value of the image.
+               Entropy measures the amount of uncertainty or randomness in the image.
     """
-    if len(image) > k_size:
-        kernel_im = build_kernel(image, i, j, k_size)
-    return median_filter(kernel_im, sig)
+    return shannon_entropy(image)
 
-def bilateral_filtering(
-        image:np.ndarray, 
-        i:int, j:int, 
-        d=9, sigmaColor=75, sigmaSpace=75, 
-        k_size=3
-    )->cv2.Mat:
+
+def calculate_edge_preservation(original:np.ndarray, enhanced:np.ndarray)->float:
     """
-    Apply a bilateral filter to a specific pixel in an image.
+    Calculate the edge preservation ratio between two images.
+    Evaluates how well edges (which are crucial for identifying objects) 
+    are preserved after enhancement. This can be done using edge detectors 
+    like the Canny edge detector and comparing edge maps.
 
     Args:
-        image (np.ndarray): The input image as a NumPy array.
-        i (int): The row index of the target pixel.
-        j (int): The column index of the target pixel.
-        d (int, optional): Diameter of each pixel neighborhood. Defaults to 9.
-        sigmaColor (int, optional): Filter sigma in the color space. Defaults to 75.
-        sigmaSpace (int, optional): Filter sigma in the coordinate space. Defaults to 75.
-        k_size (int, optional): The size of the kernel. Defaults to 3.
+        original (numpy.ndarray): The original image.
+        enhanced (numpy.ndarray): The enhanced image.
 
     Returns:
-        cv2.Mat: The filtered value of the target pixel.
+        float: The edge preservation ratio, indicating how well edges are preserved in the enhanced image.
+               A value closer to 1 suggests better preservation of edges.
     """
-    if len(image) > k_size:
-        kernel_im = build_kernel(image, i, j, k_size)
-    return cv2.bilateralFilter(kernel_im, d, sigmaColor, sigmaSpace)
+    # Detect edges in the original and enhanced images using the Canny edge detector
+    original_edges = canny(original)
+    enhanced_edges = canny(enhanced)
+    
+    # Calculate the ratio of shared edges between original and enhanced images to the total number of edges in the original image
+    return np.sum(original_edges & enhanced_edges) / np.sum(original_edges)
 
-def wiener_filtering(image:np.ndarray, i:int, j:int, k_size=3)->np.ndarray:
+
+def calculate_nrmse(original:np.ndarray, enhanced:np.ndarray)->float:
     """
-    Apply a Wiener filter to a specific pixel in an image.
+    Calculate the Normalized Root Mean Square Error (NRMSE) between two images.
+    A variation of MSE that normalizes the error.
 
     Args:
-        image (np.ndarray): The input image as a NumPy array.
-        i (int): The row index of the target pixel.
-        j (int): The column index of the target pixel.
-        k_size (int, optional): The size of the kernel. Defaults to 3.
+        original (numpy.ndarray): The original image.
+        enhanced (numpy.ndarray): The enhanced image.
 
     Returns:
-        np.ndarray: The filtered value of the target pixel.
+        float: The NRMSE value, indicating the normalized error between the original and enhanced images.
+               A lower NRMSE value suggests better similarity between the images.
     """
-    if len(image) > k_size:
-        kernel_im = build_kernel(image, i, j, k_size)
-    return wiener(kernel_im)
+    # Compute the NRMSE between the original and enhanced images    
+    return nrmse(original, enhanced)
 
-def bilateral_denoise_filtering(
-        image:np.ndarray, 
-        i:int, j:int, k_size=3, 
-        sigma_color=0.05, sigma_spatial=15, multichannel=False
-    ):
+
+def estimate_kernels(image:np.ndarray)->tuple[np.ndarray, np.ndarray]:
     """
-    Apply a bilateral denoise filter to a specific pixel in an image.
+    Estimate the column difference kernel (h) and the row difference kernel (hT)
+    from an enhanced image using gradient-based methods.
 
     Args:
-        image (np.ndarray): The input image as a NumPy array.
-        i (int): The row index of the target pixel.
-        j (int): The column index of the target pixel.
-        k_size (int, optional): The size of the kernel. Defaults to 3.
-        sigma_color (float, optional): Filter sigma in the color space. Defaults to 0.05.
-        sigma_spatial (int, optional): Filter sigma in the coordinate space. Defaults to 15.
-        multichannel (bool, optional): Whether the image has multiple channels. Defaults to False.
+        image (numpy.ndarray): The enhanced image.
 
     Returns:
-        np.ndarray: The filtered value of the target pixel.
+        numpy.ndarray: The column difference kernel (h).
+        numpy.ndarray: The row difference kernel (hT).
     """
-    if len(image) > k_size:
-        kernel_im = build_kernel(image, i, j, k_size)
-    return denoise_bilateral(kernel_im, sigma_color=sigma_color, sigma_spatial=sigma_spatial, multichannel=multichannel)
+    # Compute horizontal and vertical gradients using Sobel operator
+    horizontal_gradient = filters.sobel_h(image)
+    vertical_gradient = filters.sobel_v(image)
+    
+    return horizontal_gradient, vertical_gradient
 
-def nl_means_filtering(
-        image:np.ndarray, 
-        i:int, j:int, k_size=3, 
-        h=1.15, fast_mode=True, 
-        patch_size=5, patch_distance=6, multichannel=False
-    ):
+def calculate_roughness(image:np.ndarray)->float:
     """
-    Apply a non-local means filter to a specific pixel in an image.
+    Calculate the roughness of an image to evaluate streak non-uniform noise.
 
     Args:
-        image (np.ndarray): The input image as a NumPy array.
-        i (int): The row index of the target pixel.
-        j (int): The column index of the target pixel.
-        k_size (int, optional): The size of the kernel. Defaults to 3.
-        h (float, optional): The parameter regulating filter strength. Defaults to 1.15.
-        fast_mode (bool, optional): If True, a fast version of the algorithm is used. Defaults to True.
-        patch_size (int, optional): The size of the patches used for comparison. Defaults to 5.
-        patch_distance (int, optional): The maximum distance in pixels between patches. Defaults to 6.
-        multichannel (bool, optional): Whether the image has multiple channels. Defaults to False.
+        image (numpy.ndarray): The input image matrix.
 
     Returns:
-        np.ndarray: The filtered value of the target pixel.
-    """
-    if len(image) > k_size:
-        kernel_im = build_kernel(image, i, j, k_size)
-    sigma_est = np.mean(estimate_sigma(kernel_im, multichannel=multichannel))
-    return denoise_nl_means(kernel_im, h=h*sigma_est, fast_mode=fast_mode, patch_size=patch_size, patch_distance=patch_distance, multichannel=multichannel)
+        float: The roughness value of the image.
+    """    
+    # Define the column difference kernel (h) and the row difference kernel (hT)
+    h, hT = estimate_kernels(image)
 
-def var_filtering(image)
+    # Compute the convolution of the image with the column and row difference kernels
+    hI = convolve2d(image, h, mode='same', boundary='symm')
+    hTI = convolve2d(image, hT, mode='same', boundary='symm')
+    
+    # Compute the L1 norm of the matrices hI and hTI
+    norm_hI = np.linalg.norm(hI, ord=1)
+    norm_hTI = np.linalg.norm(hTI, ord=1)
+    
+    # Compute the L1 norm of the original image matrix
+    norm_I = np.linalg.norm(image, ord=1)
+    
+    # Compute the roughness value (ρ)
+    roughness = (norm_hI * norm_hTI) / norm_I
+    
+    return roughness
+
+def compute_metrics(
+        original:list|np.ndarray,
+        enhanced:list|np.ndarray,
+        max_px = 255
+    )->dict[str, list]:
+    metrics = init_metrics()
+    for frame in frames:
+        metrics["mse"].append(calculate_mse(original, enhanced)) 
+        metrics["psnr"].append(calculate_psnr(original, enhanced, max_px)) 
+        metrics["roughness"].append(calculate_roughness(enhanced)) 
+        metrics["ssim"].append(calculate_ssim(original, enhanced)) 
+        metrics["cei"].append(calculate_cei(original, enhanced)) 
+        metrics["entropy"].append(calculate_entropy(enhanced)) 
+        metrics["edge_preservation"].append(calculate_edge_preservation(original, enhanced)) 
+        metrics["nmse"].append(calculate_nrmse(original, enhanced))
+    return metrics

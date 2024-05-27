@@ -6,7 +6,10 @@ from scipy.ndimage import gaussian_filter, uniform_filter, median_filter
 from scipy.signal import wiener
 from skimage.restoration import denoise_bilateral, denoise_nl_means, estimate_sigma
 
-def mean_filter(image:list, i:int, j:int, k_size=3)->float:
+def mean_filtering(
+        image:list|np.ndarray, 
+        i:int, j:int, k_size=3
+    )->float:
     """
     Apply a mean filter to a specific pixel in an image.
 
@@ -19,12 +22,11 @@ def mean_filter(image:list, i:int, j:int, k_size=3)->float:
     Returns:
         float: The mean value of the kernel surrounding the target pixel.
     """
-    kernel_im = []
-    for l in range(i-k_size, i+k_size):
-        for m in range(j-k_size, j+k_size):
-            if 0 <= l < len(image) and 0 <= m < len(image[0]):
-                kernel_im.append(image[l, m])
-    return mean(kernel_im)
+    if len(image) > k_size:
+        kernel_im = build_kernel(image, i, j, k_size)
+        return mean(kernel_im)
+    else:
+        return mean(image)
 
 def gauss(x, sig=1):
     """
@@ -53,7 +55,10 @@ def gauss_kernel(x, y, sig=1):
     """
     return 1/(2*np.pi*sig**2) * np.exp(-(x**2 + y**2) / (2*sig**2))
 
-def gaussian_filtering(image:np.ndarray, i:int, j:int, sig=1., k_size=3):
+def gaussian_filtering(
+        image:list|np.ndarray, 
+        i:int, j:int, sig=1., k_size=3
+    ):
     """
     Apply a Gaussian filter to a specific pixel in an image.
 
@@ -67,11 +72,14 @@ def gaussian_filtering(image:np.ndarray, i:int, j:int, sig=1., k_size=3):
     Returns:
         np.ndarray: The filtered value of the target pixel.
     """
-    kernel_im = build_kernel(image, i, j, k_size)
-    return gaussian_filter(kernel_im, sig)
+    if len(image) > k_size:
+        kernel_im = build_kernel(image, i, j, k_size)
+        return gaussian_filter(kernel_im, sig)
+    else:
+        return gaussian_filter(image, sig)
 
 def uniform_filtering(
-        image:np.ndarray, 
+        image:list|np.ndarray, 
         i:int, j:int, 
         sig=1., k_size=3
     )->np.ndarray:
@@ -88,10 +96,17 @@ def uniform_filtering(
     Returns:
         np.ndarray: The filtered value of the target pixel.
     """
-    kernel_im = build_kernel(image, i, j, k_size)
-    return uniform_filter(kernel_im, sig)
+    if len(image) > k_size:
+        kernel_im = build_kernel(image, i, j, k_size)
+        return uniform_filter(kernel_im, sig)
+    else:
+        return uniform_filter(image, sig)
 
-def median_filtering(image:np.ndarray, i:int, j:int, sig=1., k_size=3)->float:
+def median_filtering(
+        image:list|np.ndarray, 
+        i:int, j:int, 
+        sig=1., k_size=3
+    )->float:
     """
     Apply a median filter to a specific pixel in an image.
 
@@ -105,11 +120,14 @@ def median_filtering(image:np.ndarray, i:int, j:int, sig=1., k_size=3)->float:
     Returns:
         float: The filtered value of the target pixel.
     """
-    kernel_im = build_kernel(image, i, j, k_size)
-    return median_filter(kernel_im, sig)
+    if len(image) > k_size:
+        kernel_im = build_kernel(image, i, j, k_size)
+        return median_filter(kernel_im, sig)
+    else:
+        return median_filter(image, sig)
 
 def bilateral_filtering(
-        image:np.ndarray, 
+        image:list|np.ndarray, 
         i:int, j:int, 
         d=9, sigmaColor=75, sigmaSpace=75, 
         k_size=3
@@ -129,10 +147,16 @@ def bilateral_filtering(
     Returns:
         cv2.Mat: The filtered value of the target pixel.
     """
-    kernel_im = build_kernel(image, i, j, k_size)
-    return cv2.bilateralFilter(kernel_im, d, sigmaColor, sigmaSpace)
+    if len(image) > k_size:
+        kernel_im = build_kernel(image, i, j, k_size)
+        return cv2.bilateralFilter(kernel_im, d, sigmaColor, sigmaSpace)
+    else:
+        return cv2.bilateralFilter(image, d, sigmaColor, sigmaSpace)
 
-def wiener_filtering(image:np.ndarray, i:int, j:int, k_size=3)->np.ndarray:
+def wiener_filtering(
+        image:list|np.ndarray, 
+        i:int, j:int, k_size=3
+    )->np.ndarray:
     """
     Apply a Wiener filter to a specific pixel in an image.
 
@@ -145,11 +169,14 @@ def wiener_filtering(image:np.ndarray, i:int, j:int, k_size=3)->np.ndarray:
     Returns:
         np.ndarray: The filtered value of the target pixel.
     """
-    kernel_im = build_kernel(image, i, j, k_size)
-    return wiener(kernel_im)
+    if len(image) > k_size:
+        kernel_im = build_kernel(image, i, j, k_size)
+        return wiener(kernel_im)
+    else:
+        return wiener(image)
 
 def bilateral_denoise_filtering(
-        image:np.ndarray, 
+        image:list|np.ndarray, 
         i:int, j:int, k_size=3, 
         sigma_color=0.05, sigma_spatial=15, multichannel=False
     ):
@@ -168,11 +195,14 @@ def bilateral_denoise_filtering(
     Returns:
         np.ndarray: The filtered value of the target pixel.
     """
-    kernel_im = build_kernel(image, i, j, k_size)
-    return denoise_bilateral(kernel_im, sigma_color=sigma_color, sigma_spatial=sigma_spatial, multichannel=multichannel)
+    if len(image) > k_size:
+        kernel_im = build_kernel(image, i, j, k_size)
+        return denoise_bilateral(kernel_im, sigma_color=sigma_color, sigma_spatial=sigma_spatial, multichannel=multichannel)
+    else:
+        return denoise_bilateral(image, sigma_color=sigma_color, sigma_spatial=sigma_spatial, multichannel=multichannel)
 
 def nl_means_filtering(
-        image:np.ndarray, 
+        image:list|np.ndarray, 
         i:int, j:int, k_size=3, 
         h=1.15, fast_mode=True, 
         patch_size=5, patch_distance=6, multichannel=False
@@ -194,6 +224,33 @@ def nl_means_filtering(
     Returns:
         np.ndarray: The filtered value of the target pixel.
     """
-    kernel_im = build_kernel(image, i, j, k_size)
-    sigma_est = np.mean(estimate_sigma(kernel_im, multichannel=multichannel))
-    return denoise_nl_means(kernel_im, h=h*sigma_est, fast_mode=fast_mode, patch_size=patch_size, patch_distance=patch_distance, multichannel=multichannel)
+    if len(image) > k_size:
+        kernel_im = build_kernel(image, i, j, k_size)
+        sigma_est = np.mean(estimate_sigma(kernel_im, multichannel=multichannel))
+        return denoise_nl_means(kernel_im, h=h*sigma_est, fast_mode=fast_mode, patch_size=patch_size, patch_distance=patch_distance, multichannel=multichannel)
+    else:
+        sigma_est = np.mean(estimate_sigma(image, multichannel=multichannel))
+        return denoise_nl_means(image, h=h*sigma_est, fast_mode=fast_mode, patch_size=patch_size, patch_distance=patch_distance, multichannel=multichannel)
+
+def var_filtering(
+        image: list | np.ndarray, 
+        i: int, j: int, k_size=3
+    ) -> float:
+    """
+    Calculate the variance of a kernel (submatrix) from an image centered around a specific pixel.
+
+    Args:
+        image (list | np.ndarray): The input image as a 2D list or array.
+        i (int): The row index of the target pixel around which the kernel is built.
+        j (int): The column index of the target pixel around which the kernel is built.
+        k_size (int, optional): The size of the kernel (half-width). Defaults to 3.
+
+    Returns:
+        float: The variance of the values within the kernel. If the image is smaller than the kernel size, 
+        the variance of the entire image is returned.
+    """
+    if len(image) > k_size:
+        kernel_im = build_kernel(image, i, j, k_size)
+        return np.var(kernel_im)
+    else:
+        return np.var(image)
