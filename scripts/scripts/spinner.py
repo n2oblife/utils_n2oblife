@@ -18,7 +18,7 @@ def animate(stop_event, messages):
         sys.stdout.write(f'\r{message} {c}')
         sys.stdout.flush()
         time.sleep(0.1)
-    sys.stdout.write(f'\rDone! \n')
+    sys.stdout.write(f'\r{message} -> Done! \n')
 
 def spinner_decorator(messages):
     """Decorator to show a spinner with dynamic loading text while a function is running.
