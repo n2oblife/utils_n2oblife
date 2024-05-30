@@ -200,6 +200,29 @@ def add_argument_to_parser(parser, option: ParserOptions):
         parser.add_argument(f'--{option.long}', **args)
 
 
+def build_args():
+    """
+    Build and parse command-line arguments for the program.
+
+    This function creates a dict of parser options for the command-line arguments
+    required by the program. The arguments are parsed and returned.
+
+    Arguments : folder_path, width, height, depth, num_frames, framerate
+    Flags : show_video
+
+    Returns:
+        Namespace: A namespace containing the parsed arguments.
+    """
+    parser_options = []  # Initialize an empty list to store parser options
+    ## TEMPLATE TO FILL IN
+    # Add parser option
+
+    # Parse the input arguments using the defined parser options
+    args = parse_input()
+    
+    print(" --- Input parsed --- ")  # Indicate that input has been successfully parsed
+    return args  # Return the parsed arguments
+
 def in_venv():
     """Get base/real prefix, or sys.prefix if there is none."""
     base_prfix = (getattr(sys, "base_prefix", None)

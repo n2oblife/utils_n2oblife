@@ -2,7 +2,7 @@ import os
 import cv2
 import numpy as np
 from tqdm import tqdm
-from ..InterractionHandling.ScriptUtils import spinner_decorator
+from InterractionHandling.ScriptUtils import spinner_decorator
 
 
 def read_bin_file(file_path: str, width: int, height: int, channels: int = 3, depth: str = "8b") -> np.ndarray:
@@ -225,15 +225,15 @@ def apply_lut(frame, lut):
         return frame
 
 @spinner_decorator(["showing frames"])
-def show_video(frames: list, title='frames', frame_rate=30, equalize=False) -> None:
+def show_video(frames:list|np.ndarray|cv2.Mat, title='frames', frame_rate=30, equalize=True) -> None:
     """
     Display video frames in a window from a list.
 
     Args:
-        frames (list): A list containing the frames of the video.
+        frames (list|np.ndarray|cv2.Mat): A list containing the frames of the video.
         title (str, optional): The title of the window. Defaults to 'frames'.
         frame_rate (int, optional): The frame rate for displaying the video. Defaults to 30.
-        lut (list|np.ndarray, optional): A lookup table (LUT) to apply to the frames. Defaults to None.
+        equalize (bool, optional): Whether to apply histogram equalization using LUT. Defaults to True.
     """
     # Display each frame
     for frame in frames:
@@ -250,3 +250,18 @@ def show_video(frames: list, title='frames', frame_rate=30, equalize=False) -> N
     # Close all the frames
     cv2.destroyAllWindows()
 
+def load_frames(args:dict):
+
+    frames = store_video_from_bin(
+        folder_path=args['folder_path'],
+        width=args['width'],
+        height=args['height'],
+        channels=1,
+        depth=args['depth']
+    )
+
+    print(f"{len(frames)} frames stored")
+
+    if args['show_video']:
+        show_video(frames, equalize=True, frame_rate=60)
+    return frames

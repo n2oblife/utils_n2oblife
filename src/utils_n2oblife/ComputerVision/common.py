@@ -1,7 +1,13 @@
 import numpy as np
 
 
-def build_kernel(image:list, i:int, j:int, k_size=3):
+def process_return(returned, og):
+    if isinstance(og, (np.ndarray)):
+        return np.array(returned, dtype=og.dtype)
+    else:
+        return returned
+
+def build_kernel(image: list|np.ndarray, i: int, j: int, k_size=3) -> list|np.ndarray:
     """
     Extract a kernel (submatrix) from an image centered around a specific pixel.
 
@@ -14,12 +20,36 @@ def build_kernel(image:list, i:int, j:int, k_size=3):
     Returns:
         list: A flattened list containing the values of the kernel surrounding the target pixel.
     """
-    kernel_im = np.array([])
-    for l in range(i - k_size, i + k_size):
-        for m in range(j - k_size, j + k_size):
+    kernel_im = []
+    p = 0
+    for l in range(i - k_size//2, i + k_size//2+1):
+        kernel_im.append([])
+        for m in range(j - k_size//2, j + k_size//2+1):
             if 0 <= l < len(image) and 0 <= m < len(image[0]):
-                kernel_im.append(image[l][m])
-    return kernel_im
+                kernel_im[p].append(image[l][m])
+            else :
+                kernel_im[p].append(None)
+        p+=1
+    return process_return(returned=kernel_im, og=image)
+
+
+def rm_None(data):
+    """
+    Recursively remove None elements and empty lists from a deeply nested list.
+
+    Args:
+        data (list): The input list, potentially containing nested lists, None elements, and empty lists.
+
+    Returns:
+        list: A new list with all None elements and empty lists removed.
+    """
+    if isinstance(data, list):
+        # Recursively process each item in the list, and filter out None and empty lists
+        cleaned_data = [rm_None(item) for item in data if item is not None]
+        # Filter out empty lists
+        return [item for item in cleaned_data if (not isinstance(item, list)) or (len(item) > 0)]
+    else:
+        return data
 
 def Yij(frame: list | np.ndarray):
     """
