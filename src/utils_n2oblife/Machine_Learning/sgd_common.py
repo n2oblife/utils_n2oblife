@@ -14,7 +14,7 @@ def error(
     Returns:
         float | np.ndarray: The difference between the estimated and target values.
     """
-    return Xest - target
+    return np.abs(Xest - target)
 
 def loss(
         Xest: list | np.ndarray, 
