@@ -1,11 +1,13 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from skimage.feature import canny
 from skimage.measure import shannon_entropy
 from skimage.metrics import normalized_root_mse as nrmse
 from skimage import filters
 from scipy.ndimage import gaussian_filter
 from scipy.signal import convolve2d
-
+from tqdm import tqdm
+from src.utils_n2oblife.ComputerVision.common import reshape_array
 
 def init_metrics()->dict[str, list]:
     """
@@ -218,7 +220,7 @@ def calculate_roughness(image:np.ndarray)->float:
 
     Returns:
         float: The roughness value of the image.
-    """    
+    """ 
     # Define the column difference kernel (h) and the row difference kernel (hT)
     h, hT = estimate_kernels(image)
 
@@ -238,19 +240,118 @@ def calculate_roughness(image:np.ndarray)->float:
     
     return roughness
 
-def compute_metrics(
-        original:list|np.ndarray,
-        enhanced:list|np.ndarray,
-        max_px = 255
-    )->dict[str, list]:
-    metrics = init_metrics()
-    for frame in frames:
-        metrics["mse"].append(calculate_mse(original, enhanced)) 
-        metrics["psnr"].append(calculate_psnr(original, enhanced, max_px)) 
-        metrics["roughness"].append(calculate_roughness(enhanced)) 
-        metrics["ssim"].append(calculate_ssim(original, enhanced)) 
-        metrics["cei"].append(calculate_cei(original, enhanced)) 
-        metrics["entropy"].append(calculate_entropy(enhanced)) 
-        metrics["edge_preservation"].append(calculate_edge_preservation(original, enhanced)) 
-        metrics["nmse"].append(calculate_nrmse(original, enhanced))
+def apply_metrics(
+        original_frames: list | np.ndarray,
+        enhanced_frames: list | np.ndarray,
+        to_compute: list[str] = ['mse', 'psnr'],
+        max_px=255
+    ) -> dict[str, list]:
+    """
+    Compute specified image quality metrics for each pair of original and enhanced frames.
+
+    Args:
+        original_frames (list | np.ndarray): The original frames.
+        enhanced_frames (list | np.ndarray): The enhanced frames.
+        to_compute (list[str]): List of metrics to compute.
+        max_px (int, optional): The maximum pixel value for PSNR calculation. Defaults to 255.
+
+    Returns:
+        dict[str, list]: A dictionary containing lists of metric values for each frame.
+    """
+    # Define available metrics functions
+    metric_functions = {
+        "mse": calculate_mse,
+        "psnr": lambda original, enhanced: calculate_psnr(original, enhanced, max_px),
+        "ssim": calculate_ssim,
+        "cei": calculate_cei,
+        "entropy": calculate_entropy,
+        "edge_preservation": calculate_edge_preservation,
+        "nmse": calculate_nrmse,
+        "roughness": calculate_roughness
+    }
+
+    if to_compute==['all']:
+        to_compute = metric_functions.keys()
+
+    # Initialize metrics dictionary
+    metrics = {metric: [] for metric in to_compute}
+
+    # Iterate through frames and compute the specified metrics
+    for i in tqdm(range(len(enhanced_frames)), desc="Computing metrics", unit="frame"):
+        # Reshape arrays if necessary
+        temp_original = reshape_array(original_frames[i])
+        temp_enhanced = reshape_array(enhanced_frames[i])
+
+        # Compute each specified metric and store the results
+        for metric in to_compute:
+            if metric in metric_functions:
+                    try:
+                        # Try to call the function with both arguments
+                        metrics[metric].append(metric_functions[metric](temp_original, temp_enhanced))
+                    except TypeError:
+                        # If it raises a TypeError, call the function with the single argument
+                        metrics[metric].append(metric_functions[metric](temp_enhanced))
+            else:
+                raise ValueError(f"Metric '{metric}' is not recognized.")
+
     return metrics
+
+
+def metrics_estimated(
+        estimated_frames: dict[str, list], 
+        og_frames: np.ndarray, 
+        to_compute: list[str] = ['mse', 'psnr'], 
+        max_px=255
+    ) -> dict[str, dict[str, list]]:
+    """
+    Compute specified image quality metrics for each pair of original and enhanced frames 
+    across different algorithms.
+
+    Args:
+        estimated_frames (dict[str, list]): A dictionary where keys are algorithm names and values 
+                                            are lists of enhanced frames.
+        og_frames (np.ndarray): The original frames.
+        to_compute (list[str]): A list of metric names to compute.
+        max_px (int, optional): The maximum pixel value for PSNR calculation. Defaults to 255.
+
+    Returns:
+        dict[str, dict[str, list]]: A dictionary where keys are algorithm names and values are 
+                                    dictionaries containing metric values for each frame.
+    """
+    all_metrics = {}  # Dictionary to store metrics for each algorithm
+
+    # Iterate over each algorithm and its corresponding enhanced frames
+    for algo, enhanced_frames in estimated_frames.items():
+        # Compute metrics for the current algorithm's enhanced frames
+        print(f"Apply {to_compute} metrics on {algo} enhanced frames")
+        all_metrics[algo] = apply_metrics(og_frames, enhanced_frames, to_compute, max_px)
+
+    # print(f"Metrics : {all_metrics}")
+    return all_metrics
+
+def plot_metrics(data):
+    """
+    Plot metrics for different algorithms individually.
+
+    Args:
+        data (dict): Dictionary containing algorithm names as keys and dictionaries of metric data as values.
+    """
+    # Extract all metrics from the first algorithm entry
+    metrics = list(data[next(iter(data))].keys())
+
+    # Number of metrics
+    num_metrics = len(metrics)
+
+    for i, metric in enumerate(metrics):
+        plt.figure(figsize=(10, 5))
+        
+        for algo, algo_data in data.items():
+            if metric in algo_data:
+                plt.plot(algo_data[metric], label=f"{algo}")
+        
+        plt.title(f"{metric.upper()} for Different Algorithms")
+        plt.xlabel("Index")
+        plt.ylabel(metric.upper())
+        plt.legend()
+        plt.grid(True)
+        plt.show()

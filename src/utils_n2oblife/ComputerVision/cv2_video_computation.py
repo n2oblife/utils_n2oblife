@@ -81,9 +81,9 @@ def store_video_from_bin(folder_path, width, height, channels=3, depth = "8b")->
     for bin_file in bin_files:
         file_path = os.path.join(folder_path, bin_file)
         frame = read_bin_file(file_path, width, height, channels, depth)
-        frames.append(frame)
-    
-    return frames
+        frames.append(np.squeeze(frame))
+        
+    return np.array(frames, dtype=frames[0].dtype)
 
 
 def store_video(file_path: str = None) -> list:
@@ -235,8 +235,10 @@ def show_video(frames:list|np.ndarray|cv2.Mat, title='frames', frame_rate=30, eq
         frame_rate (int, optional): The frame rate for displaying the video. Defaults to 30.
         equalize (bool, optional): Whether to apply histogram equalization using LUT. Defaults to True.
     """
+    i=0
     # Display each frame
     for frame in frames:
+        i+=1
         # Apply LUT if lut is provided
         if equalize:
             lut = create_lut_from_frame(frame=frame, target='8b')
@@ -246,12 +248,43 @@ def show_video(frames:list|np.ndarray|cv2.Mat, title='frames', frame_rate=30, eq
         # Press 'q' on keyboard to exit
         if cv2.waitKey(int(1000 / frame_rate)) & 0xFF == ord('q'):
             break
+        # Press 'a' on keyboard to print current frame number
+        # if cv2.waitKey(int(1000 / frame_rate)) & 0xFF == ord('a'):
+        #     print(f"\nCurrent frame is {i}th")
 
     # Close all the frames
     cv2.destroyAllWindows()
 
-def load_frames(args:dict):
+def showing_all_estimated(estimated_frames, framerate):
+    for algo in estimated_frames:
+        show_video(frames=estimated_frames[algo], 
+                   title=algo,
+                   frame_rate=framerate)
 
+def load_frames(args: dict) -> list:
+    """
+    Load frames from a binary video file and optionally display them.
+
+    This function reads frames from a binary video file specified by the arguments,
+    stores them in a list, and optionally displays the video.
+
+    Args:
+        args (dict): A dictionary containing the following keys:
+
+            -> 'folder_path' (str): The path to the folder containing the binary video file.
+
+            -> 'width' (int): The width of each frame in the video.
+
+            -> 'height' (int): The height of each frame in the video.
+
+            -> 'depth' (int): The bit depth of the video.
+
+            -> 'show_video' (bool): A flag indicating whether to display the video after loading.
+
+    Returns:
+        list: A list of frames loaded from the binary video file.
+    """
+    # Load frames from the binary video file using the provided parameters
     frames = store_video_from_bin(
         folder_path=args['folder_path'],
         width=args['width'],
@@ -260,8 +293,14 @@ def load_frames(args:dict):
         depth=args['depth']
     )
 
+    # Print the number of frames that were loaded and stored
     print(f"{len(frames)} frames stored")
 
+    # If the 'show_video' flag is True, display the video
     if args['show_video']:
-        show_video(frames, equalize=True, frame_rate=60)
+        show_video(frames, equalize=True, frame_rate=args['framerate'])
+
+    # Return the list of frames
     return frames
+
+

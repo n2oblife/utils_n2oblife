@@ -30,7 +30,7 @@ def build_kernel(image: list|np.ndarray, i: int, j: int, k_size=3) -> list|np.nd
             else :
                 kernel_im[p].append(None)
         p+=1
-    return process_return(returned=kernel_im, og=image)
+    return process_return(returned=rm_None(kernel_im), og=image)
 
 
 def rm_None(data):
@@ -62,3 +62,22 @@ def Yij(frame: list | np.ndarray):
         The value of the central pixel in the frame.
     """
     return frame[len(frame) // 2][len(frame[0]) // 2]
+
+
+def reshape_array(_array: np.ndarray) -> np.ndarray:
+    """
+    This function checks if the input array is 3-dimensional with a shape of (w, h, 1).
+    If so, it removes the singleton dimension and returns a 2D array.
+    Otherwise, it returns the original array unchanged.
+
+    Args:
+        _array (np.ndarray): The input array, which can be either 2D or 3D.
+
+    Returns:
+        np.ndarray: The resized 2D array if the original array had a shape of (w, h, 1),
+                    otherwise the original array.
+    """
+    if _array.ndim == 3 and _array.shape[2] == 1:
+        return np.squeeze(_array, axis=-1)
+    else:
+        return _array
