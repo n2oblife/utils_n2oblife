@@ -6,13 +6,13 @@ from torchvision import datasets
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader 
 
-from utils_n2oblife.Machine_Learning.Metrics import *
+from utils_n2oblife.Machine_Learning.Metrics.ClassicMetrics import *
 from utils_n2oblife.Machine_Learning.Device import Device
 from utils_n2oblife.ComputerVision.ImageDataset import ImageDatasetTorch
 
 class Evaluate:
     def __init__(self, model_path:str=None, model=None, 
-                 model_name:str=None, metrics:ClassicMetrics=None, 
+                 model_name:str=None, metrics:Metrics=None, 
                  dataset_path:str=None, label_path:str=None,
                  batch_size = 32, 
                  device:Device=None) -> None:
@@ -30,7 +30,7 @@ class Evaluate:
         #     #     (), ()), # add normalization adapted for the model, not PIL
         # ])
     
-    def load_evaluation(self, metrics:ClassicMetrics=None,
+    def load_evaluation(self, metrics:Metrics=None,
                         device:Device=None):
         if metrics:
             self.metrics = metrics
@@ -90,7 +90,7 @@ class Evaluate:
         #TODO finish loading models orrectly
         
 
-    def load_metrics(self, metrics:ClassicMetrics=None):
+    def load_metrics(self, metrics:Metrics=None):
         if metrics:
             self.metrics = metrics
             

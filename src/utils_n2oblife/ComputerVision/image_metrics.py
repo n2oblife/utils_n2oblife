@@ -7,7 +7,8 @@ from skimage import filters
 from scipy.ndimage import gaussian_filter
 from scipy.signal import convolve2d
 from tqdm import tqdm
-from src.utils_n2oblife.ComputerVision.common import reshape_array
+from utils.common import reshape_array
+from utils.data_handling import *
 
 def init_metrics()->dict[str, list]:
     """
@@ -267,7 +268,7 @@ def apply_metrics(
         "entropy": calculate_entropy,
         "edge_preservation": calculate_edge_preservation,
         "nmse": calculate_nrmse,
-        "roughness": calculate_roughness
+        # "roughness": calculate_roughness
     }
 
     if to_compute==['all']:
@@ -277,7 +278,7 @@ def apply_metrics(
     metrics = {metric: [] for metric in to_compute}
 
     # Iterate through frames and compute the specified metrics
-    for i in tqdm(range(len(enhanced_frames)), desc="Computing metrics", unit="frame"):
+    for i in tqdm(range(len(enhanced_frames)-1), desc="Computing metrics", unit="frame"):
         # Reshape arrays if necessary
         temp_original = reshape_array(original_frames[i])
         temp_enhanced = reshape_array(enhanced_frames[i])
@@ -301,6 +302,7 @@ def metrics_estimated(
         estimated_frames: dict[str, list], 
         og_frames: np.ndarray, 
         to_compute: list[str] = ['mse', 'psnr'], 
+        save_path:str = None,
         max_px=255
     ) -> dict[str, dict[str, list]]:
     """
@@ -322,9 +324,18 @@ def metrics_estimated(
 
     # Iterate over each algorithm and its corresponding enhanced frames
     for algo, enhanced_frames in estimated_frames.items():
-        # Compute metrics for the current algorithm's enhanced frames
-        print(f"Apply {to_compute} metrics on {algo} enhanced frames")
-        all_metrics[algo] = apply_metrics(og_frames, enhanced_frames, to_compute, max_px)
+        if save_path:
+            if check_files_exist(save_path, [algo + '_metrics.pkl']):
+                all_metrics[algo] = load_data(save_path + '/' + algo + '_metrics.pkl')
+            else:
+                # Compute metrics for the current algorithm's enhanced frames
+                print(f"Apply {to_compute} metrics on {algo} enhanced frames")
+                all_metrics[algo] = apply_metrics(og_frames, enhanced_frames, to_compute, max_px)
+                save_dict(all_metrics[algo], save_path+'/'+algo+'_metrics.pkl')
+        else:
+            # Compute metrics for the current algorithm's enhanced frames
+            print(f"Apply {to_compute} metrics on {algo} enhanced frames")
+            all_metrics[algo] = apply_metrics(og_frames, enhanced_frames, to_compute, max_px)
 
     # print(f"Metrics : {all_metrics}")
     return all_metrics

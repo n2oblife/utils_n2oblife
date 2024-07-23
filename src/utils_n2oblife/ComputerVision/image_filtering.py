@@ -1,8 +1,8 @@
-from src.utils_n2oblife.ComputerVision.common import build_kernel
+from utils.common import build_kernel
 import cv2
 import numpy as np
 from statistics import mean 
-from scipy.ndimage import gaussian_filter, uniform_filter, median_filter
+from scipy.ndimage import gaussian_filter, uniform_filter, median_filter, generic_filter
 from scipy.signal import wiener
 from skimage.restoration import denoise_bilateral, denoise_nl_means, estimate_sigma
 
@@ -42,17 +42,22 @@ def frame_mean_filtering(
     Returns:
         np.ndarray: The filtered image with the same dimensions as the input image.
     """
-    # Initialize an array for the filtered image with the same shape and type as the input image
-    filter_img = np.zeros(image.shape, dtype=image.dtype)
+    if isinstance(image, list):
+        # Initialize an array for the filtered image with the same shape and type as the input image
+        filter_img = np.zeros(image.shape, dtype=image.dtype)
 
-    # Iterate over each pixel in the image
-    for i in range(len(image)):
-        for j in range(len(image[0])):
-            # Apply the kernel mean filtering to each pixel and store the result in the filtered image
-            filter_img[i][j] = kernel_mean_filtering(image, i, j, k_size)
-    
-    # Return the filtered image
-    return filter_img
+        # Iterate over each pixel in the image
+        for i in range(len(image)):
+            for j in range(len(image[0])):
+                # Apply the kernel mean filtering to each pixel and store the result in the filtered image
+                filter_img[i][j] = kernel_mean_filtering(image, i, j, k_size)
+        
+        # Return the filtered image
+        return filter_img
+    elif isinstance(image, np.ndarray):
+        return generic_filter(input=image, function=np.mean, size=k_size, mode='reflect')
+    else :
+        raise NotImplementedError
 
 
 def gauss(x, sig=1):
@@ -101,14 +106,11 @@ def kernel_gauss_3x3(kernel_3x3: list | np.ndarray) -> float:
         # If input is a list, convert to numpy array and apply Gaussian filter
         # Define the Gaussian kernel
         gauss_ker = [[1, 2, 1], [2, 4, 2], [1, 2, 1]]
-        if isinstance(kernel_3x3, list):
-            return 1 / 16 * sum([gauss_ker[i][j] * kernel_3x3[i][j] for i in range(3) for j in range(3)])
-        # If input is a numpy array, apply Gaussian filter directly
-        if isinstance(kernel_3x3, np.ndarray):
-            gauss_ker = np.array(gauss_ker, dtype=kernel_3x3.dtype)
-            return (1 / 16 * gauss_ker * kernel_3x3).sum()
+        return 1 / 16 * sum([gauss_ker[i][j] * kernel_3x3[i][j] for i in range(3) for j in range(3)])
+
     else:
         raise TypeError("Kernel to compute must be of size 3x3")
+
 
 def kernel_gauss_3x3_filtering(image: list | np.ndarray, i: int = 0, j: int = 0) -> float:
     """
@@ -149,14 +151,22 @@ def frame_gauss_3x3_filtering(image: list | np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: The filtered image.
     """
-    # Initialize an empty array for the filtered image
-    filter_img = np.zeros(image.shape, dtype=image.dtype)
-    # Iterate over the image, excluding the border pixels
-    for i in range(1, len(filter_img) - 1):
-        for j in range(1, len(filter_img[0]) - 1):
-            # Apply Gaussian filter to each pixel
-            filter_img[i][j] = kernel_gauss_3x3_filtering(image, i, j)
-    return filter_img
+    if isinstance(image, list):
+        # Initialize an empty array for the filtered image
+        filter_img = np.zeros(image.shape, dtype=image.dtype)
+        # Iterate over the image, excluding the border pixels
+        for i in range(1, len(filter_img) - 1):
+            for j in range(1, len(filter_img[0]) - 1):
+                # Apply Gaussian filter to each pixel
+                filter_img[i][j] = kernel_gauss_3x3_filtering(image, i, j)
+        return filter_img
+    elif isinstance(image, np.ndarray):
+        def kernel_gauss_3x3_filtering_array(ker_3x3):
+            gauss_ker = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]], dtype=ker_3x3.dtype)
+            return (1 / 16 * gauss_ker * np.reshape(ker_3x3, (3, 3))).sum()
+        return generic_filter(input=image, function=kernel_gauss_3x3_filtering_array, size=3, mode='reflect')
+    else :
+        raise NotImplementedError
 
 
 def kernel_sobel_3x3(kernel_3x3: list | np.ndarray, ) -> float:
@@ -177,16 +187,11 @@ def kernel_sobel_3x3(kernel_3x3: list | np.ndarray, ) -> float:
         # Define the Sobel kernel for horizontal and vertical edges
         sobel_ker_x = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]]
         sobel_ker_y = [[-1, -2, -1], [0, 0, 0], [1, 2, 1]]
-        # If input is a list, convert to numpy array and apply Sobel filter
-        if isinstance(kernel_3x3, list):
-            return np.sqrt((sum([sobel_ker_x[i][j] * kernel_3x3[i][j] for i in range(3) for j in range(3)])**2) + (sobel_ker_y([sobel_ker_y[i][j] * kernel_3x3[i][j] for i in range(3) for j in range(3)])**2))
-        # If input is a numpy array, apply Sobel filter directly
-        if isinstance(kernel_3x3, np.ndarray):
-            sobel_ker_x = np.array(sobel_ker_x, dtype=kernel_3x3.dtype)
-            sobel_ker_y = np.array(sobel_ker_y, dtype=kernel_3x3.dtype)
-            return np.sqrt(((sobel_ker_x * kernel_3x3)**2 + (sobel_ker_y * kernel_3x3)**2).sum())
+        return np.sqrt((sum([sobel_ker_x[i][j] * kernel_3x3[i][j] for i in range(3) for j in range(3)])**2) + (sobel_ker_y([sobel_ker_y[i][j] * kernel_3x3[i][j] for i in range(3) for j in range(3)])**2))
+
     else:
         raise TypeError("Kernel to compute must be of size 3x3")
+
 
 def kernel_sobel_3x3_filtering(image: list | np.ndarray, i: int = 0, j: int = 0) -> float:
     """
@@ -227,14 +232,23 @@ def frame_sobel_3x3_filtering(image: list | np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: The filtered image.
     """
-    # Initialize an empty array for the filtered image
-    filter_img = np.zeros(image.shape, dtype=image.dtype)
-    # Iterate over the image, excluding the border pixels
-    for i in range(1, len(filter_img) - 1):
-        for j in range(1, len(filter_img[0]) - 1):
-            # Apply Sobel filter to each pixel
-            filter_img[i][j] = kernel_sobel_3x3_filtering(image, i, j)
-    return filter_img
+    if isinstance(image, list):
+        # Initialize an empty array for the filtered image
+        filter_img = np.zeros(image.shape, dtype=image.dtype)
+        # Iterate over the image, excluding the border pixels
+        for i in range(1, len(filter_img) - 1):
+            for j in range(1, len(filter_img[0]) - 1):
+                # Apply Sobel filter to each pixel
+                filter_img[i][j] = kernel_sobel_3x3_filtering(image, i, j)
+        return filter_img
+    elif isinstance(image, np.ndarray):
+        def kernel_sobel_3x3_array(ker_3x3):
+            sobel_ker_x = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=ker_3x3.dtype)
+            sobel_ker_y = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype=ker_3x3.dtype)
+            return np.sqrt(((sobel_ker_x * np.reshape(ker_3x3, (3, 3)))**2 + (sobel_ker_y * np.reshape(ker_3x3, (3, 3)))**2).sum())
+        return generic_filter(input=image, function=kernel_sobel_3x3_array, size=3, mode='reflect')
+    else :
+        raise NotImplementedError
 
 
 def kernel_laplacian_3x3(kernel_3x3: list | np.ndarray) -> float:
@@ -255,14 +269,11 @@ def kernel_laplacian_3x3(kernel_3x3: list | np.ndarray) -> float:
         # If input is a list, convert to numpy array and apply Gaussian filter
         # Define the Gaussian kernel
         laplacian_ker = [[0, 1, 0], [1, -4, 1], [0, 1, 0]]
-        if isinstance(kernel_3x3, list):
-            return sum([laplacian_ker[i][j] * kernel_3x3[i][j] for i in range(3) for j in range(3)])
-        # If input is a numpy array, apply Gaussian filter directly
-        if isinstance(kernel_3x3, np.ndarray):
-            laplacian_ker = np.array(laplacian_ker, dtype=kernel_3x3.dtype)
-            return (laplacian_ker * kernel_3x3).sum()
+        return sum([laplacian_ker[i][j] * kernel_3x3[i][j] for i in range(3) for j in range(3)])
+
     else:
         raise TypeError("Kernel to compute must be of size 3x3")
+
 
 def kernel_laplacian_3x3_filtering(image: list | np.ndarray, i: int = 0, j: int = 0) -> float:
     """
@@ -303,14 +314,22 @@ def frame_laplacian_3x3_filtering(image: list | np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: The filtered image.
     """
-    # Initialize an empty array for the filtered image
-    filter_img = np.zeros(image.shape, dtype=image.dtype)
-    # Iterate over the image, excluding the border pixels
-    for i in range(1, len(filter_img) - 1):
-        for j in range(1, len(filter_img[0]) - 1):
-            # Apply Gaussian filter to each pixel
-            filter_img[i][j] = kernel_laplacian_3x3_filtering(image, i, j)
-    return filter_img
+    if isinstance(image, list):
+        # Initialize an empty array for the filtered image
+        filter_img = np.zeros(image.shape, dtype=image.dtype)
+        # Iterate over the image, excluding the border pixels
+        for i in range(1, len(filter_img) - 1):
+            for j in range(1, len(filter_img[0]) - 1):
+                # Apply Gaussian filter to each pixel
+                filter_img[i][j] = kernel_laplacian_3x3_filtering(image, i, j)
+        return filter_img
+    elif isinstance(image, np.ndarray):
+        def kernel_laplacian_3x3_array(ker_3x3):
+            laplacian_ker = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=ker_3x3.dtype)
+            return (laplacian_ker * np.reshape(ker_3x3, (3, 3))).sum()
+        return generic_filter(input=image, function=kernel_laplacian_3x3_array, size=3, mode='reflect')
+    else :
+        raise NotImplementedError
 
 
 def kernel_military_3x3(kernel_3x3: list | np.ndarray) -> float:
@@ -379,14 +398,22 @@ def frame_military_3x3_filtering(image: list | np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: The filtered image.
     """
-    # Initialize an empty array for the filtered image
-    filter_img = np.zeros(image.shape, dtype=image.dtype)
-    # Iterate over the image, excluding the border pixels
-    for i in range(1, len(filter_img) - 1):
-        for j in range(1, len(filter_img[0]) - 1):
-            # Apply Gaussian filter to each pixel
-            filter_img[i][j] = kernel_military_3x3_filtering(image, i, j)
-    return filter_img
+    if isinstance(image, list):
+        # Initialize an empty array for the filtered image
+        filter_img = np.zeros(image.shape, dtype=image.dtype)
+        # Iterate over the image, excluding the border pixels
+        for i in range(1, len(filter_img) - 1):
+            for j in range(1, len(filter_img[0]) - 1):
+                # Apply Gaussian filter to each pixel
+                filter_img[i][j] = kernel_military_3x3_filtering(image, i, j)
+        return filter_img
+    elif isinstance(image, np.ndarray):
+        def kernel_military_3x3_array(ker_3x3):
+            military_ker = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]], dtype=ker_3x3.dtype)
+            return (military_ker * np.reshape(ker_3x3, (3, 3))).sum()
+        return generic_filter(input=image, function=kernel_military_3x3_array, size=3, mode='reflect')
+    else:
+        raise NotImplementedError
 
 # TODO other filters exists : low_pass=1/10*[[1, 1, 1], [1, 2, 1], [1, 1, 1]]  |  H2=[[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]]   |  H3=[[1, -2, 1], [-2, 5, -2], [1, -2, 1]]
 
@@ -431,11 +458,16 @@ def frame_uniform_filtering(
     Returns:
         np.ndarray: The filtered image with the same dimensions as the input image.
     """
-    filter_img = np.zeros(image.shape, dtype=image.dtype)
-    for i in range(len(image)):
-        for j in range(len(image[0])):
-            filter_img[i][j] = kernel_uniform_filtering(image, i, j, sig, k_size)
-    return filter_img
+    if isinstance(image, list):
+        filter_img = np.zeros(image.shape, dtype=image.dtype)
+        for i in range(len(image)):
+            for j in range(len(image[0])):
+                filter_img[i][j] = kernel_uniform_filtering(image, i, j, sig, k_size)
+        return filter_img
+    elif isinstance(image, np.ndarray):
+        return uniform_filter(input=image, size=k_size, )
+    else :
+        raise NotImplementedError
 
 
 def kernel_median_filtering(
@@ -478,11 +510,16 @@ def frame_median_filtering(
     Returns:
         np.ndarray: The filtered image with the same dimensions as the input image.
     """
-    filter_img = np.zeros(image.shape, dtype=image.dtype)
-    for i in range(len(image)):
-        for j in range(len(image[0])):
-            filter_img[i][j] = kernel_median_filtering(image, i, j, sig, k_size)
-    return filter_img
+    if isinstance(image, list):
+        filter_img = np.zeros(image.shape, dtype=image.dtype)
+        for i in range(len(image)):
+            for j in range(len(image[0])):
+                filter_img[i][j] = kernel_median_filtering(image, i, j, sig, k_size)
+        return filter_img
+    elif isinstance(image, np.ndarray):
+        return generic_filter(input=image, function=median_filter, size=3, mode='reflect')
+    else:
+        raise NotImplementedError
 
 
 def kernel_bilateral_filtering(
@@ -532,11 +569,17 @@ def frame_bilateral_filtering(
     Returns:
         np.ndarray: The filtered image with the same dimensions as the input image.
     """
-    filter_img = np.zeros(image.shape, dtype=image.dtype)
-    for i in range(len(image)):
-        for j in range(len(image[0])):
-            filter_img[i][j] = kernel_bilateral_filtering(image, i, j, d, sigmaColor, sigmaSpace, k_size)
-    return filter_img
+    if isinstance(image, list):
+        filter_img = np.zeros(image.shape, dtype=image.dtype)
+        for i in range(len(image)):
+            for j in range(len(image[0])):
+                filter_img[i][j] = kernel_bilateral_filtering(image, i, j, d, sigmaColor, sigmaSpace, k_size)
+        return filter_img
+    elif isinstance(image, np.ndarray):
+        return generic_filter(
+            input=image, function=cv2.bilateralFilter, size=k_size, 
+            mode='reflect', extra_arguments=(d, sigmaColor, sigmaSpace)
+            )
 
 
 def kernel_wiener_filtering(
@@ -575,11 +618,16 @@ def frame_wiener_filtering(
     Returns:
         np.ndarray: The filtered image with the same dimensions as the input image.
     """
-    filter_img = np.zeros(image.shape, dtype=image.dtype)
-    for i in range(len(image)):
-        for j in range(len(image[0])):
-            filter_img[i][j] = kernel_wiener_filtering(image, i, j, k_size)
-    return filter_img
+    if isinstance(image, list):
+        filter_img = np.zeros(image.shape, dtype=image.dtype)
+        for i in range(len(image)):
+            for j in range(len(image[0])):
+                filter_img[i][j] = kernel_wiener_filtering(image, i, j, k_size)
+        return filter_img
+    elif isinstance(image, np.ndarray):
+        return generic_filter(input=image, function=wiener, size=k_size, mode='reflect')
+    else:
+        raise NotImplementedError
 
 
 def kernel_bilateral_denoise_filtering(
@@ -719,27 +767,29 @@ def kernel_var_filtering(
         return np.var(kernel_im)
     else:
         return np.var(image)
-    
-def frame_var_filtering(
-        image: list | np.ndarray,
-        k_size=3
-    ) -> np.ndarray:
-    """
-    Apply variance filtering to a given image using a specified kernel size.
 
-    Args:
-        image (list | np.ndarray): The input image to be filtered. It can be a list or a numpy array.
-        k_size (int, optional): The size of the kernel used for local mean calculation. Defaults to 3.
+def frame_var_filtering(image: list | np.ndarray, k_size=3):
+    """
+    Compute the variance filtering of a kernel for each element in the given frame.
+
+    Parameters:
+    frame (numpy.ndarray): Input 2D array (frame)
+    kernel_size (int): Size of the kernel of variance
 
     Returns:
-        np.ndarray: The filtered image with the same dimensions as the input image.
+    numpy.ndarray: Output 2D array (frame) with the variance of the kernel kernel
     """
-    filter_img = np.zeros(image.shape, dtype=image.dtype)
-    for i in range(len(image)):
-        for j in range(len(image[0])):
-            filter_img[i][j] = kernel_var_filtering(image, i, j, k_size)
-    return filter_img
-
+    if isinstance(image, list):
+        filter_img = np.zeros(image.shape, dtype=image.dtype)
+        for i in range(len(image)):
+            for j in range(len(image[0])):
+                filter_img[i][j] = kernel_var_filtering(image, i, j, k_size)
+        return filter_img  
+    elif isinstance(image, np.ndarray):
+        return generic_filter(input=image, function=np.var, size=k_size, mode='reflect')
+    else :
+        raise NotImplementedError
+    
     
 def kernel_cardinal_filtering(image: list|np.ndarray, i:int=0, j:int=0, k_size = 3)->float:
     """
@@ -767,7 +817,7 @@ def frame_cardinal_filtering(
         k_size=3
     ) -> np.ndarray:
     """
-    Apply cardinal filtering to a given image using a specified kernel size.
+    Apply cardinal filtering to a given image using a specified kernel size. Not optimized.
 
     Args:
         image (list | np.ndarray): The input image to be filtered. It can be a list or a numpy array.
@@ -819,16 +869,23 @@ def frame_mad_filtering(
     Returns:
         np.ndarray: The filtered image with the same dimensions as the input image.
     """
-    filter_img = np.zeros(image.shape, dtype=image.dtype)
-    for i in range(len(image)):
-        for j in range(len(image[0])):
-            filter_img[i][j] = kernel_mad_filtering(image, i, j, k_size)
-    return filter_img
+    if isinstance(image, list):
+        filter_img = np.zeros(image.shape, dtype=image.dtype)
+        for i in range(len(image)):
+            for j in range(len(image[0])):
+                filter_img[i][j] = kernel_mad_filtering(image, i, j, k_size)
+        return filter_img
+    elif isinstance(image, np.ndarray):
+        def kernel_mad_filtering_array(frame):
+            return np.mean(np.abs(frame - np.mean(frame)))
+        return generic_filter(input=image, function= kernel_mad_filtering_array, size=k_size, mode='reflect')
+    else:
+        raise NotImplementedError
 
 def exp_window(
         new_val:float|np.ndarray, 
         smoothed:float|np.ndarray,
-        alpha:float=0.5
+        alpha:float=0.01
     )->float|np.ndarray:
     """
     Update a smoothed value using exponential weighting.
@@ -846,14 +903,15 @@ def exp_window(
     Returns:
         float | np.ndarray: The updated smoothed value.
     """
-    if 0 <= alpha <= 1:
+    alpha_valid = ( 0<= alpha.all() <= 1) if isinstance(alpha, np.ndarray) else ( 0<= alpha <= 1)
+    if alpha_valid:
         # less computation : smoothed + alpha*(new_val - smoothed)
         return alpha*new_val + (1-alpha)*smoothed
     else:
-        raise ValueError("Alpha value must be between 0 and 1.")
+        raise ValueError("Alpha value must be between in [0, 1].")
 
 
-def frame_exp_window_filtering(image: list | np.ndarray, low_passed: list | np.ndarray, alpha=0.5) -> list | np.ndarray:
+def frame_exp_window_filtering(image: list | np.ndarray, low_passed: list | np.ndarray, alpha=0.01) -> list | np.ndarray:
     """
     Apply an exponential window filtering to an image.
 
@@ -868,13 +926,34 @@ def frame_exp_window_filtering(image: list | np.ndarray, low_passed: list | np.n
     Returns:
         list | np.ndarray: The updated low-passed image after applying exponential window filtering.
     """
-    # Iterate through each pixel in the image
-    for i in range(len(image)):
-        for j in range(len(image[0])):
-            # Update the low-passed value using exponential window filtering
-            low_passed[i][j] = exp_window(image[i][j], low_passed[i][j], alpha)
+    if isinstance(image, list):
+        # Iterate through each pixel in the image
+        for i in range(len(image)):
+            for j in range(len(image[0])):
+                # Update the low-passed value using exponential window filtering
+                low_passed[i][j] = exp_window(image[i][j], low_passed[i][j], alpha)
+        return low_passed
+    elif isinstance(image, np.ndarray):
+        return exp_window(new_val=image, smoothed=low_passed, alpha=alpha)
+    else:
+        raise NotImplementedError
     
-    return low_passed
+def list_exp_window_filtering(frames: list|np.ndarray, alpha = 0.01, init = None) -> list|np.ndarray:
+    smoothed_list = []
+    if init == None:
+        smoothed = frames[0]
+    else :
+        smoothed = init
+    for frame in frames[1:]:
+        smoothed = frame_exp_window_filtering(image=frame, low_passed=smoothed, alpha=alpha)
+        smoothed_list.append(smoothed)
+    return smoothed_list
+
+def element_bin_threshold_filtering(element, threshold):
+    if element >= threshold:
+        return 1
+    else :
+        return 0
 
 def frame_bin_threshold_filtering(arr, threshold):
     """
@@ -887,4 +966,6 @@ def frame_bin_threshold_filtering(arr, threshold):
     Returns:
         np.ndarray: Array after applying the threshold filter.
     """
+    if isinstance(arr, list):
+        arr = np.array(arr)
     return np.where(arr >= threshold, 1, 0)
