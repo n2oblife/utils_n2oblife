@@ -1,6 +1,3 @@
-Here's the updated code with comments explaining each function and its parameters:
-
-```python
 # TODO add some functions of computer vision on polygons
 import math
 import cv2
