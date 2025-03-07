@@ -1,0 +1,47 @@
+name: Version Update
+
+on:
+  push:
+    branches:
+      - main  # Runs on push to the main branch
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install toml  # Python package for reading/writing TOML files
+
+      - name: Read and Increment Version
+        id: version
+        run: |
+          # Extract the current version from pyproject.toml
+          current_version=$(python -c "import toml; print(toml.load('pyproject.toml')['project']['version'])")
+          
+          # Split version into parts: major.minor.bug
+          IFS='.' read -r major minor bug <<< "$current_version"
+          
+          # Increment bug version by 1
+          new_bug_version=$((bug + 1))
+          
+          # Format new version as major.minor.new_bug_version
+          new_version="$major.$minor.$new_bug_version"
+          echo "New version: $new_version"
+
+          # Update pyproject.toml with the new version
+          sed -i "s/version = \"$current_version\"/version = \"$new_version\"/" pyproject.toml
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
+          git add pyproject.toml
+          git commit -m "Bump version to $new_version"
+          git push
