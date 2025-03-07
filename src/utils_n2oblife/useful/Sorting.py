@@ -85,7 +85,8 @@ def merge_sort(array:list)->list:
     if len(array) < 2:
         return array
     # with random midpoint better complexity in general
-    midpoint = np.random.randint(0, len(array)-1)
+    midpoint = np.random.randint(1, len(array))  # Ensures midpoint is always inside the array
+
     return merge(
         left=merge_sort(array[:midpoint]),
         right=merge_sort(array[midpoint:]))
