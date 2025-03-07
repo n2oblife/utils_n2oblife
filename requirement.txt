@@ -1,11 +1,7 @@
 torch
-onnxruntime 
-onnx
 torchvision
 opencv-python
-pycocotools 
 matplotlib
 datasets
 dataset
 easydict
-git+https://github.com/facebookresearch/segment-anything.git

@@ -1,0 +1,36 @@
+stages:
+  - test
+  - deploy
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+before_script:
+  - apt-get update && apt-get install -y python3-pip python3-venv
+  - python3 -m venv venv
+  - source venv/bin/activate
+  - pip install --upgrade pip
+
+test:
+  stage: test
+  script:
+    - chmod +x test.sh
+    - ./test.sh
+  cache:
+    paths:
+      - .cache/pip/
+  only:
+    - main
+
+deploy:
+  stage: deploy
+  script:
+    - chmod +x build_package.sh
+    - ./build_package.sh
+  artifacts:
+    paths:
+      - dist/  # Save the /dist folder after build
+    expire_in: 1 week  # Keep artifacts for 1 week
+  only:
+    - main
+  when: on_success  # Deploy only if tests pass
