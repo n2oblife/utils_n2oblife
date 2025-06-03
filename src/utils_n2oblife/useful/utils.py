@@ -54,7 +54,7 @@ def pretty_print(name, input, val_width=40, key_width=0):
 
     return pretty_str
 
-def file_parts(file_path):
+def split_file(file_path):
     """
     Lists a files parts such as base_path, file name and extension
 
@@ -77,7 +77,7 @@ def absolute_import(file_path):
     """
 
     # module name
-    _, name, _ = file_parts(file_path)
+    _, name, _ = split_file(file_path)
 
     # load the spec and module
     spec = importlib.util.spec_from_file_location(name, file_path)
