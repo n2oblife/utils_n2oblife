@@ -50,15 +50,3 @@ class Device():
                 torch.cuda.empty_cache()
         except:
             pass
-
-class Device_CEA(Device):
-    def __init__(self) -> None:
-        """
-        Class used in the lima project : https://github.com/aymara/lima.git
-        Almost a config which changes depending on the device used
-        """
-        super().__init__()
-        base_dir = '/home/users/zkanit/'
-        self._base_dir = base_dir
-        self._save_dir = base_dir+''
-        self._data = base_dir+''
